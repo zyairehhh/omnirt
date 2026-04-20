@@ -65,7 +65,12 @@ class RedisJobStore(InMemoryJobStore):
 
         def pump() -> None:
             while not stop_event.is_set():
-                message = pubsub.get_message(ignore_subscribe_messages=True, timeout=0.2)
+                try:
+                    message = pubsub.get_message(ignore_subscribe_messages=True, timeout=0.2)
+                except Exception:
+                    if stop_event.is_set():
+                        break
+                    continue
                 if not message or message.get("type") != "message":
                     continue
                 payload = message.get("data")

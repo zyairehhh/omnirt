@@ -198,6 +198,16 @@ class OmniEngine:
         job = self.store.get(job_id)
         if job is None:
             return result
+        if is_generate_result_like(result):
+            self._hydrate_result_metadata(
+                result,
+                job=job,
+                model_spec=model_spec,
+                executor=executor_entry.value,
+                batch_size=1,
+                batch_group_id=None,
+            )
+            self._record_result_metrics(result)
         job.state = "succeeded"
         job.result = result
         job.error = None
@@ -213,20 +223,6 @@ class OmniEngine:
             execution_mode=job.execution_mode or "unknown",
             state="succeeded",
         )
-        if is_generate_result_like(result):
-            latest = self.store.get(job.id)
-            if latest is not None:
-                self._hydrate_result_metadata(
-                    result,
-                    job=latest,
-                    model_spec=model_spec,
-                    executor=executor_entry.value,
-                    batch_size=1,
-                    batch_group_id=None,
-                )
-                self._record_result_metrics(result)
-                latest.result = result
-                self.store.save(latest)
         return result
 
     def _execute_batch(self, group: BatchGroup) -> None:
@@ -312,6 +308,15 @@ class OmniEngine:
             job = self.store.get(item.job_id)
             if job is None:
                 continue
+            self._hydrate_result_metadata(
+                child_result,
+                job=job,
+                model_spec=model_spec,
+                executor=executor_entry.value,
+                batch_size=len(active_items),
+                batch_group_id=group.group_id,
+            )
+            self._record_result_metrics(child_result)
             job.state = "succeeded"
             job.result = child_result
             job.error = None
@@ -329,20 +334,6 @@ class OmniEngine:
                 execution_mode=job.execution_mode or "unknown",
                 state="succeeded",
             )
-            latest = self.store.get(job.id)
-            if latest is None:
-                continue
-            self._hydrate_result_metadata(
-                child_result,
-                job=latest,
-                model_spec=model_spec,
-                executor=executor_entry.value,
-                batch_size=len(active_items),
-                batch_group_id=group.group_id,
-            )
-            self._record_result_metrics(child_result)
-            latest.result = child_result
-            self.store.save(latest)
 
     def _build_executor(self, *, model_spec: ModelSpec, runtime, request: GenerateRequest):
         if model_spec.execution_mode == "subprocess":
