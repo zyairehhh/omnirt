@@ -6,7 +6,7 @@ from inspect import Parameter, signature
 from pathlib import Path
 import time
 import uuid
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Sequence
 
 from omnirt.core.adapters import AdapterManager
 from omnirt.core.media import load_image, load_mask, save_video_frames
@@ -183,7 +183,10 @@ class ModularExecutor(Executor):
         except KeyError as exc:
             raise ValueError(f"Unsupported dtype: {dtype_name}") from exc
 
-    def _build_generator(self, seed: Optional[int]):
+    def _build_generator(self, seed: Optional[int] | Sequence[Optional[int]]):
+        if isinstance(seed, (list, tuple)):
+            generators = [self._build_generator(item) for item in seed]
+            return [generator for generator in generators if generator is not None] or None
         if seed is None:
             return None
         try:
@@ -250,7 +253,7 @@ class ModularExecutor(Executor):
     def _apply_cached_prompt_embeddings(self, request, kwargs, cache, *, event_callback=None):
         if not hasattr(self.pipeline, "encode_prompt"):
             return kwargs, False
-        if request.inputs.get("prompt") in (None, ""):
+        if request.inputs.get("prompt") in (None, "") or isinstance(request.inputs.get("prompt"), (list, tuple)):
             return kwargs, False
 
         cached = cache.lookup_embeddings(request)
@@ -347,12 +350,14 @@ class ModularExecutor(Executor):
     def _export(self, result: Any, request: GenerateRequest) -> list[Artifact]:
         output_dir = Path(request.config.get("output_dir", "outputs"))
         output_dir.mkdir(parents=True, exist_ok=True)
-        seed_part = request.config.get("seed", "random")
+        seed_value = request.config.get("seed", "random")
+        seed_parts = seed_value if isinstance(seed_value, (list, tuple)) else None
 
         images = getattr(result, "images", None)
         if images is not None:
             artifacts: list[Artifact] = []
             for index, image in enumerate(list(images)):
+                seed_part = seed_parts[index] if seed_parts and index < len(seed_parts) else seed_value
                 file_path = output_dir / f"{request.model}-{seed_part}-{index}.png"
                 image.save(file_path)
                 artifacts.append(
@@ -370,7 +375,7 @@ class ModularExecutor(Executor):
         if frames is None:
             raise ValueError(f"Unexpected modular pipeline output for model {request.model!r}")
         sequence = list(frames[0] if frames and isinstance(frames[0], list) else frames)
-        file_path = output_dir / f"{request.model}-{seed_part}.mp4"
+        file_path = output_dir / f"{request.model}-{seed_value}.mp4"
         save_video_frames(file_path, sequence, fps=int(request.inputs.get("fps", 16)))
         first_frame = sequence[0]
         return [

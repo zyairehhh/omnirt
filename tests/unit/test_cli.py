@@ -328,6 +328,32 @@ def test_main_validate_emits_json(monkeypatch, capsys) -> None:
     assert json.loads(stdout)["resolved_backend"] == "cpu-stub"
 
 
+def test_main_bench_emits_json(monkeypatch, capsys) -> None:
+    class Report:
+        def to_dict(self):
+            return {
+                "scenario": "text2image_sdxl_concurrent4",
+                "total_requests": 10,
+                "concurrency": 4,
+                "warmup": 1,
+                "total_duration_s": 1.5,
+                "throughput_rps": 6.7,
+                "latency_ms": {"p50": 120.0, "p95": 150.0, "p99": 160.0},
+                "ttft_ms": {"p50": 30.0, "p95": 40.0, "p99": 45.0},
+                "peak_vram": 12.0,
+                "cache_hit_ratio": 0.5,
+                "execution_mode_breakdown": {"modular": 10},
+            }
+
+    monkeypatch.setattr("omnirt.cli.main.run_bench", lambda scenario: Report())
+
+    exit_code = main(["bench", "--scenario", "text2image_sdxl_concurrent4", "--json"])
+    stdout = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert json.loads(stdout)["scenario"] == "text2image_sdxl_concurrent4"
+
+
 def test_main_dry_run_uses_validation_only(monkeypatch, capsys) -> None:
     calls = {"generate": 0}
 

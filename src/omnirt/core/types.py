@@ -159,8 +159,11 @@ class RunReport:
     error: Optional[str] = None
     latent_stats: Optional[Dict[str, float]] = None
     cache_hits: List[str] = field(default_factory=list)
+    device_placement: Dict[str, str] = field(default_factory=dict)
+    batch_size: int = 1
+    batch_group_id: Optional[str] = None
     stream_events: List[StageEventRecord] = field(default_factory=list)
-    schema_version: str = "0.3.0"
+    schema_version: str = "0.4.0"
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -184,6 +187,9 @@ class RunReport:
             error=payload.get("error"),
             latent_stats=payload.get("latent_stats"),
             cache_hits=[str(item) for item in payload.get("cache_hits", [])],
+            device_placement={str(key): str(value) for key, value in payload.get("device_placement", {}).items()},
+            batch_size=int(payload.get("batch_size", 1)),
+            batch_group_id=payload.get("batch_group_id"),
             stream_events=[StageEventRecord.from_dict(item) for item in payload.get("stream_events", [])],
             schema_version=str(payload.get("schema_version", "0.0.0")),
         )

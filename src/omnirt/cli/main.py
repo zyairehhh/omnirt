@@ -5,10 +5,12 @@ from __future__ import annotations
 import argparse
 from dataclasses import asdict
 import json
+from pathlib import Path
 import sys
 from typing import Optional, Sequence
 
 from omnirt.api import describe_model, generate, list_available_models, validate
+from omnirt.bench import BenchScenario, get_bench_scenario, list_bench_scenarios, run_bench
 from omnirt.core.presets import available_presets
 from omnirt.core.registry import list_model_variants
 from omnirt.core.types import GenerateRequest, OmniRTError
@@ -130,6 +132,19 @@ def build_parser() -> argparse.ArgumentParser:
     serve_parser.add_argument("--pipeline-cache-size", type=int, default=4, help="Maximum cached executor instances.")
     serve_parser.add_argument("--api-key-file", help="Optional newline-delimited API key file.")
     serve_parser.add_argument("--model-aliases", help="Optional YAML/JSON alias mapping file.")
+    serve_parser.add_argument("--batch-window-ms", type=int, default=0, help="Queue batching window in milliseconds.")
+    serve_parser.add_argument("--max-batch-size", type=int, default=1, help="Maximum requests merged into one batch.")
+
+    bench_parser = subparsers.add_parser("bench", help="Run a local benchmark scenario.")
+    add_request_arguments(bench_parser)
+    bench_parser.add_argument("--scenario", choices=list_bench_scenarios(), help="Built-in benchmark scenario.")
+    bench_parser.add_argument("--concurrency", type=int, help="Concurrent request count.")
+    bench_parser.add_argument("--total", type=int, default=10, help="Total measured requests.")
+    bench_parser.add_argument("--warmup", type=int, default=1, help="Warmup requests before timing.")
+    bench_parser.add_argument("--batch-window-ms", type=int, default=0, help="Queue batching window in milliseconds.")
+    bench_parser.add_argument("--max-batch-size", type=int, default=1, help="Maximum requests merged into one batch.")
+    bench_parser.add_argument("--output", help="Optional JSON output path.")
+    bench_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON to stdout.")
 
     return parser
 
@@ -388,6 +403,50 @@ def render_generate_summary(payload: dict) -> str:
     return "\n".join(lines)
 
 
+def render_bench_summary(payload: dict) -> str:
+    latency = payload.get("latency_ms", {})
+    ttft = payload.get("ttft_ms", {})
+    return "\n".join(
+        [
+            f"scenario={payload.get('scenario', '')}",
+            f"total_requests={payload.get('total_requests', 0)}",
+            f"concurrency={payload.get('concurrency', 0)}",
+            f"throughput_rps={payload.get('throughput_rps', 0)}",
+            f"latency_p50_ms={latency.get('p50', 0)}",
+            f"latency_p95_ms={latency.get('p95', 0)}",
+            f"latency_p99_ms={latency.get('p99', 0)}",
+            f"ttft_p50_ms={ttft.get('p50', 0)}",
+            f"peak_vram={payload.get('peak_vram', 0)}",
+            f"cache_hit_ratio={payload.get('cache_hit_ratio', 0)}",
+        ]
+    )
+
+
+def scenario_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> BenchScenario:
+    if args.scenario:
+        base = get_bench_scenario(args.scenario)
+        return BenchScenario(
+            name=base.name,
+            request_template=base.request_template,
+            concurrency=args.concurrency or base.concurrency,
+            total_requests=args.total or base.total_requests,
+            warmup=args.warmup,
+            batch_window_ms=args.batch_window_ms if args.batch_window_ms is not None else base.batch_window_ms,
+            max_batch_size=args.max_batch_size if args.max_batch_size is not None else base.max_batch_size,
+        )
+
+    request = request_from_args(args, parser)
+    return BenchScenario(
+        name=f"{request.model}-{request.task}",
+        request_template=request,
+        concurrency=args.concurrency or 1,
+        total_requests=args.total,
+        warmup=args.warmup,
+        batch_window_ms=args.batch_window_ms,
+        max_batch_size=args.max_batch_size,
+    )
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -408,8 +467,29 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             pipeline_cache_size=args.pipeline_cache_size,
             api_key_file=args.api_key_file,
             model_aliases_path=args.model_aliases,
+            batch_window_ms=args.batch_window_ms,
+            max_batch_size=args.max_batch_size,
         )
         uvicorn.run(app, host=args.host, port=args.port)
+        return 0
+
+    if args.command == "bench":
+        try:
+            scenario = scenario_from_args(args, parser)
+            report = run_bench(scenario)
+        except (OmniRTError, ValueError, FileNotFoundError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+
+        payload = report.to_dict()
+        if args.output:
+            output_path = Path(args.output)
+            output_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        if args.json:
+            print(json.dumps(payload, separators=(",", ":"), ensure_ascii=False))
+        else:
+            print(render_bench_summary(payload))
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
         return 0
 
     if args.command == "models":

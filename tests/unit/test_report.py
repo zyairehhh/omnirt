@@ -34,6 +34,8 @@ def test_build_run_report_copies_request_and_artifacts() -> None:
     assert report.config_resolved["width"] == 1024
     assert report.artifacts[0].path == "out.png"
     assert report.memory["peak_mb"] == 12.5
+    assert report.batch_size == 1
+    assert report.schema_version == "0.4.0"
 
 
 class DummyRuntime(BackendRuntime):

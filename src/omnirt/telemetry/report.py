@@ -20,6 +20,9 @@ def build_run_report(
     error: Optional[str],
     latent_stats: Optional[Dict[str, float]] = None,
     cache_hits: Optional[Iterable[str]] = None,
+    device_placement: Optional[Dict[str, str]] = None,
+    batch_size: int = 1,
+    batch_group_id: Optional[str] = None,
     job_id: Optional[str] = None,
     enqueued_at_ms: Optional[int] = None,
     queue_wait_ms: Optional[float] = None,
@@ -43,5 +46,8 @@ def build_run_report(
         error=error,
         latent_stats=dict(latent_stats) if latent_stats is not None else None,
         cache_hits=[str(item) for item in (cache_hits or [])],
+        device_placement={str(key): str(value) for key, value in (device_placement or {}).items()},
+        batch_size=int(batch_size),
+        batch_group_id=batch_group_id,
         stream_events=list(stream_events or []),
     )

@@ -21,6 +21,7 @@ class ModelCapabilities:
     summary: str = ""
     example: str = ""
     alias_of: Optional[str] = None
+    supports_batching: bool = True
 
 
 @dataclass
