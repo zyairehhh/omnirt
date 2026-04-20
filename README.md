@@ -1,21 +1,42 @@
 # OmniRT
 
-Open image & video generation runtime with CUDA and Ascend backends.
+[中文](./README.zh-CN.md)
 
-## Current status
+Open image and video generation runtime with CUDA and Ascend backends.
 
-The codebase now covers the full v0.1 repository surface described in `PLAN.md`:
+## Overview
 
-- installable Python package layout under `src/`
-- `omnirt` CLI with config-file and direct-flag invocation
-- `GenerateRequest` / `GenerateResult` / `RunReport`
-- backend, pipeline, registry, telemetry, weight-loader, and adapter abstractions
-- SDXL and FLUX.2 `text2image` plus SVD and Wan2.2 video pipelines targeting Diffusers
+OmniRT is a Diffusers-backed runtime layer that gives image and video models a unified CLI, Python API, validation flow, artifact export contract, and backend abstraction.
+
+Current public task surfaces:
+
+- `text2image`
+- `text2video`
+- `image2video`
+
+Current public interface highlights:
+
+- `omnirt generate`, `omnirt validate`, `omnirt models`
+- typed request helpers and a convenience `pipeline(...)` API in Python
+- normalized `GenerateRequest` / `GenerateResult` / `RunReport`
 - PNG and MP4 artifact export
-- unit, parity, integration, and error-path tests
-- basic GitHub Actions CI plus optional CUDA / Ascend self-hosted smoke jobs
+- model registry metadata, presets, validation, and backend selection
 
-Real CUDA and Ascend end-to-end generation still requires the corresponding hardware, runtime libraries, and model weights.
+## Supported Models
+
+Representative supported model families today:
+
+- Stable Diffusion: `sd15`, `sd21`, `sdxl-base-1.0`, `sdxl-turbo`, `sd3-medium`, `sd3.5-large`, `sd3.5-large-turbo`
+- Flux: `flux-dev`, `flux-schnell`, `flux2.dev`, `flux2-dev`
+- Generalist image: `glm-image`, `hunyuan-image-2.1`, `omnigen`, `qwen-image`, `sana-1.6b`, `ovis-image`, `hidream-i1`
+- Video: `svd`, `svd-xt`, `cogvideox-2b`, `cogvideox-5b`, `kandinsky5-t2v`, `kandinsky5-i2v`, `wan2.1-*`, `wan2.2-*`, `hunyuan-video`, `hunyuan-video-1.5-*`, `helios-*`, `sana-video`, `ltx-video`, `ltx2-i2v`
+
+Use the CLI to inspect the exact live registry:
+
+```bash
+omnirt models
+omnirt models flux2.dev
+```
 
 ## Quickstart
 
@@ -25,50 +46,45 @@ python3 -m omnirt --help
 pytest
 ```
 
-For SDXL and SVD runtime support, install the runtime extras too:
+For runtime model execution support, install runtime extras too:
 
 ```bash
 python3 -m pip install -e '.[runtime,dev]'
 ```
 
-## Example request
+Real CUDA and Ascend end-to-end generation still requires the corresponding hardware, runtime libraries, and model weights.
+
+## CLI
+
+YAML request:
 
 ```yaml
 task: text2image
-model: sdxl-base-1.0
+model: flux2.dev
 backend: auto
 inputs:
   prompt: "a cinematic sci-fi city at sunrise"
 config:
-  num_inference_steps: 30
-  guidance_scale: 7.5
-  seed: 42
+  preset: balanced
+  width: 1024
+  height: 1024
 ```
 
-Run it with:
+Run it:
 
 ```bash
 omnirt generate --config request.yaml --json
 ```
 
-Or use direct CLI flags:
+Direct flags:
 
 ```bash
 omnirt generate \
   --task text2image \
-  --model sdxl-base-1.0 \
-  --prompt "a cinematic sci-fi city at sunrise" \
+  --model sd15 \
+  --prompt "a lighthouse in fog" \
   --backend cuda \
-  --num-inference-steps 30 \
-  --guidance-scale 7.5 \
-  --seed 42
-```
-
-Inspect supported models and presets:
-
-```bash
-omnirt models
-omnirt models flux2.dev
+  --preset fast
 ```
 
 Validate without executing:
@@ -76,8 +92,8 @@ Validate without executing:
 ```bash
 omnirt validate \
   --task text2image \
-  --model sd15 \
-  --prompt "a lighthouse in fog" \
+  --model qwen-image \
+  --prompt "一张带有中文标题的电影海报" \
   --backend cpu-stub
 
 omnirt generate \
@@ -88,7 +104,7 @@ omnirt generate \
   --dry-run
 ```
 
-An `image2video` example:
+Video examples:
 
 ```bash
 omnirt generate \
@@ -99,30 +115,30 @@ omnirt generate \
   --num-frames 25 \
   --fps 7 \
   --frame-bucket 127 \
-  --decode-chunk-size 8 \
-  --num-inference-steps 25
-```
+  --decode-chunk-size 8
 
-A `text2video` example with Wan2.2:
-
-```bash
 omnirt generate \
   --task text2video \
-  --model wan2.2-t2v-14b \
-  --prompt "a glass whale gliding over a moonlit harbor" \
+  --model cogvideox-2b \
+  --prompt "a wooden toy ship gliding over a plush blue carpet" \
   --backend cuda \
   --num-frames 81 \
-  --fps 16 \
-  --guidance-scale 5.0 \
-  --model-path /data/models/omnirt/wan2.2-t2v-14b
+  --fps 16
 ```
+
+Available presets:
+
+- `fast`
+- `balanced`
+- `quality`
+- `low-vram`
 
 ## Python API
 
 Typed request helpers:
 
 ```python
-from omnirt import requests, validate
+from omnirt import requests, validate, generate
 
 req = requests.text2image(
     model="flux2.dev",
@@ -133,10 +149,10 @@ req = requests.text2image(
 )
 
 validation = validate(req, backend="cpu-stub")
-print(validation.to_dict())
+result = generate(req, backend="cuda")
 ```
 
-Optional pipeline-style convenience wrapper:
+Pipeline-style convenience wrapper:
 
 ```python
 import omnirt
@@ -145,29 +161,40 @@ pipe = omnirt.pipeline("sd15", backend="cpu-stub")
 validation = pipe.validate(prompt="a lighthouse in fog", preset="fast")
 ```
 
-Available presets:
+## Current Scope
 
-- `fast`
-- `balanced`
-- `quality`
-- `low-vram`
+What is already public and stable enough to build against:
 
-## Validation
+- unified image/video generation requests
+- validation and model discovery
+- model-family registry metadata
+- code and CLI entrypoints
 
-- `pytest tests/unit tests/parity` exercises the local contract and metric layer
+What is still intentionally not exposed as a full public task surface yet:
+
+- `image2image`
+- `inpaint`
+- `edit`
+- `video2video`
+
+Some underlying model families are already scaffolded for future expansion, but these task surfaces are not yet first-class OmniRT APIs.
+
+## Validation and Testing
+
+- `pytest tests/unit tests/parity` exercises the local contract and metrics layer
 - `pytest tests/integration/test_error_paths.py` checks low-memory and bad-weight failures
-- the CUDA / Ascend integration tests automatically skip unless hardware, runtime packages, and local model-directory environment variables are present
-- `OMNIRT_SDXL_MODEL_SOURCE`, `OMNIRT_SVD_MODEL_SOURCE`, and `OMNIRT_SVD_XT_MODEL_SOURCE` are expected to be local directories for smoke testing, not remote repo ids
+- CUDA and Ascend integration tests automatically skip unless hardware, runtime packages, and local model directories are available
 
 The implementation target and remaining hardware validation details are tracked in [PLAN.md](./PLAN.md).
 
-## Roadmaps
+## Docs
 
 - Model onboarding: [docs/model-onboarding.md](./docs/model-onboarding.md)
 - Model support roadmap: [docs/model-support-roadmap.md](./docs/model-support-roadmap.md)
 - China deployment: [docs/china-deployment.md](./docs/china-deployment.md)
 - Architecture notes: [docs/architecture.md](./docs/architecture.md)
 - Service schema: [docs/service-schema.md](./docs/service-schema.md)
+- Interface proposal: [docs/interface-improvement-proposal.md](./docs/interface-improvement-proposal.md)
 
 ## Utilities
 
