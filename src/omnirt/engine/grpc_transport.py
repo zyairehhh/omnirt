@@ -26,7 +26,12 @@ class GrpcWorkerClient:
 
     def run_sync(self, request, *, model_spec=None, runtime=None) -> Any:
         del model_spec, runtime
-        payload = request if isinstance(request, GenerateRequest) else GenerateRequest.from_dict(request)
+        if isinstance(request, GenerateRequest):
+            payload = request
+        elif hasattr(request, "to_dict") and callable(getattr(request, "to_dict")):
+            payload = GenerateRequest.from_dict(request.to_dict())
+        else:
+            payload = GenerateRequest.from_dict(request)
         response = self._run_sync(
             json.dumps(payload.to_dict(), ensure_ascii=False).encode("utf-8"),
             timeout=self.timeout_s,

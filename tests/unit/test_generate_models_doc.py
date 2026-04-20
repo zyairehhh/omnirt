@@ -68,5 +68,5 @@ def test_check_mode_reports_drift(monkeypatch, tmp_path: Path) -> None:
     assert gen.main(["--check"]) == 0
 
     # Corrupt one file and re-check.
-    (tmp_path / "models.md").write_text("stale\n", encoding="utf-8")
+    (tmp_path / gen.OUTPUT_FILENAME).write_text("stale\n", encoding="utf-8")
     assert gen.main(["--check"]) == 1
