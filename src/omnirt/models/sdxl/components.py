@@ -1,0 +1,17 @@
+"""SDXL component metadata."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional
+
+
+DEFAULT_SDXL_MODEL_SOURCE = "stabilityai/stable-diffusion-xl-base-1.0"
+
+
+@dataclass
+class SDXLComponents:
+    text_encoder: Optional[object] = None
+    text_encoder_2: Optional[object] = None
+    unet: Optional[object] = None
+    vae: Optional[object] = None

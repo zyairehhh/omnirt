@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  unit-and-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: python -m pip install -e '.[dev]'
+      - name: Run unit and parity tests
+        run: pytest tests/unit tests/parity
+
+  cuda-smoke:
+    if: ${{ vars.OMNIRT_ENABLE_CUDA_RUNNER == 'true' }}
+    runs-on:
+      - self-hosted
+      - linux
+      - cuda
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install runtime dependencies
+        run: python -m pip install -e '.[runtime,dev]'
+      - name: Run CUDA smoke tests
+        env:
+          OMNIRT_SDXL_MODEL_SOURCE: ${{ vars.OMNIRT_SDXL_MODEL_SOURCE }}
+          OMNIRT_SVD_MODEL_SOURCE: ${{ vars.OMNIRT_SVD_MODEL_SOURCE }}
+        run: pytest tests/integration/test_sdxl_cuda.py tests/integration/test_svd_cuda.py tests/integration/test_error_paths.py
+
+  ascend-smoke:
+    if: ${{ vars.OMNIRT_ENABLE_ASCEND_RUNNER == 'true' }}
+    runs-on:
+      - self-hosted
+      - linux
+      - ascend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install runtime dependencies
+        run: python -m pip install -e '.[runtime,dev]'
+      - name: Run Ascend smoke tests
+        env:
+          OMNIRT_SDXL_MODEL_SOURCE: ${{ vars.OMNIRT_SDXL_MODEL_SOURCE }}
+          OMNIRT_SVD_MODEL_SOURCE: ${{ vars.OMNIRT_SVD_MODEL_SOURCE }}
+        run: pytest tests/integration/test_sdxl_ascend.py tests/integration/test_svd_ascend.py tests/integration/test_error_paths.py

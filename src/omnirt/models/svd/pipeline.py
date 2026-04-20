@@ -1,0 +1,204 @@
+"""SVD pipeline implementation backed by Diffusers."""
+
+from __future__ import annotations
+
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from omnirt.core.base_pipeline import BasePipeline
+from omnirt.core.media import load_image, save_video_frames
+from omnirt.core.registry import register_model
+from omnirt.core.types import Artifact, DependencyUnavailableError, GenerateRequest
+from omnirt.models.svd.components import DEFAULT_SVD_MODEL_SOURCE
+from omnirt.schedulers import build_scheduler
+
+
+@register_model(
+    id="svd-xt",
+    task="image2video",
+    default_backend="auto",
+    resource_hint={"min_vram_gb": 14, "dtype": "fp16"},
+)
+class SVDPipeline(BasePipeline):
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._pipeline = None
+        self._pipeline_source = None
+        self._pipeline_dtype = None
+        self._last_seed = None
+        self._last_fps = None
+
+    def prepare_conditions(self, req: GenerateRequest) -> Dict[str, Any]:
+        image = req.inputs.get("image")
+        if not image:
+            raise ValueError("image2video requires inputs.image")
+        if not Path(image).exists():
+            raise FileNotFoundError(image)
+        return {
+            "image": load_image(image),
+            "num_frames": int(req.inputs.get("num_frames", 25)),
+            "fps": int(req.inputs.get("fps", 7)),
+            "frame_bucket": int(req.config.get("frame_bucket", req.config.get("motion_bucket_id", 127))),
+            "decode_chunk_size": int(req.config.get("decode_chunk_size", 8)),
+            "noise_aug_strength": float(req.config.get("noise_aug_strength", 0.02)),
+            "model_source": req.config.get("model_path", DEFAULT_SVD_MODEL_SOURCE),
+            "scheduler": req.config.get("scheduler", "euler-discrete"),
+        }
+
+    def prepare_latents(self, req: GenerateRequest, conditions: Any) -> Dict[str, Any]:
+        steps = int(req.config.get("num_inference_steps", 25))
+        seed = req.config.get("seed")
+        guidance_scale = float(req.config.get("guidance_scale", 3.0))
+        torch_dtype = self._resolve_torch_dtype(req.config.get("dtype"))
+        generator = self._build_generator(seed)
+        pipeline = self._load_pipeline(
+            source=conditions["model_source"],
+            torch_dtype=torch_dtype,
+            scheduler_name=conditions["scheduler"],
+            config=req.config,
+        )
+        self._last_seed = seed
+        self._last_fps = conditions["fps"]
+        return {
+            "steps": steps,
+            "seed": seed,
+            "generator": generator,
+            "guidance_scale": guidance_scale,
+            "conditions": conditions,
+            "pipeline": pipeline,
+        }
+
+    def denoise_loop(self, latents: Any, conditions: Any, config: Dict[str, Any]) -> Dict[str, Any]:
+        started = time.perf_counter()
+        pipeline = latents["pipeline"]
+        result = pipeline(
+            image=conditions["image"],
+            num_frames=conditions["num_frames"],
+            fps=conditions["fps"],
+            motion_bucket_id=conditions["frame_bucket"],
+            noise_aug_strength=conditions["noise_aug_strength"],
+            decode_chunk_size=conditions["decode_chunk_size"],
+            num_inference_steps=latents["steps"],
+            min_guidance_scale=latents["guidance_scale"],
+            max_guidance_scale=latents["guidance_scale"],
+            generator=latents["generator"],
+            output_type="pil",
+        )
+        frames = list(result.frames[0] if result.frames and isinstance(result.frames[0], list) else result.frames)
+        return {
+            "frames": frames,
+            "fps": conditions["fps"],
+            "seed": latents["seed"],
+            "generation_ms": round((time.perf_counter() - started) * 1000, 3),
+        }
+
+    def decode(self, latents: Any) -> Any:
+        return latents["frames"]
+
+    def export(self, raw: Any, req: GenerateRequest) -> List[Artifact]:
+        output_dir = self.resolve_output_dir(req)
+        seed_part = self._last_seed if self._last_seed is not None else "random"
+        file_path = output_dir / f"{req.model}-{seed_part}.mp4"
+        save_video_frames(file_path, raw, fps=self._last_fps or int(req.inputs.get("fps", 7)))
+        first_frame = raw[0]
+        return [
+            Artifact(
+                kind="video",
+                path=str(file_path),
+                mime="video/mp4",
+                width=first_frame.width,
+                height=first_frame.height,
+                num_frames=len(raw),
+            )
+        ]
+
+    def _torch(self):
+        try:
+            import torch
+        except ImportError as exc:
+            raise DependencyUnavailableError("PyTorch is required to run the SVD pipeline.") from exc
+        return torch
+
+    def _resolve_torch_dtype(self, dtype_name: Optional[str]):
+        torch = self._torch()
+        mapping = {
+            None: torch.float16,
+            "fp16": torch.float16,
+            "bf16": torch.bfloat16,
+            "fp32": torch.float32,
+        }
+        try:
+            return mapping[dtype_name]
+        except KeyError as exc:
+            raise ValueError(f"Unsupported dtype: {dtype_name}") from exc
+
+    def _build_generator(self, seed: Optional[int]):
+        if seed is None:
+            return None
+        torch = self._torch()
+        for device_name in (self.runtime.device_name, "cpu"):
+            try:
+                return torch.Generator(device=device_name).manual_seed(int(seed))
+            except Exception:
+                continue
+        return torch.Generator().manual_seed(int(seed))
+
+    def _diffusers_pipeline_cls(self):
+        try:
+            from diffusers import StableVideoDiffusionPipeline
+        except ImportError as exc:
+            raise DependencyUnavailableError(
+                "diffusers is required for SVD execution. Install omnirt with runtime dependencies."
+            ) from exc
+        return StableVideoDiffusionPipeline
+
+    def _load_pipeline(
+        self,
+        *,
+        source: str,
+        torch_dtype: Any,
+        scheduler_name: str,
+        config: Dict[str, Any],
+    ):
+        if self._pipeline is not None and self._pipeline_source == source and self._pipeline_dtype == torch_dtype:
+            return self._pipeline
+
+        pipeline_cls = self._diffusers_pipeline_cls()
+        pipeline = pipeline_cls.from_pretrained(
+            source,
+            torch_dtype=torch_dtype,
+            use_safetensors=True,
+        )
+        if scheduler_name != "euler-discrete":
+            raise ValueError(f"Unsupported SVD scheduler: {scheduler_name}")
+        scheduler_config = dict(config)
+        if getattr(pipeline, "scheduler", None) is not None and hasattr(pipeline.scheduler, "config"):
+            scheduler_config["scheduler_config"] = pipeline.scheduler.config
+        pipeline.scheduler = build_scheduler(scheduler_config)
+        self._wrap_pipeline_modules(pipeline)
+        pipeline = self.runtime.to_device(pipeline, dtype=torch_dtype)
+        self._apply_adapters(pipeline)
+        self._pipeline = pipeline
+        self._pipeline_source = source
+        self._pipeline_dtype = torch_dtype
+        return pipeline
+
+    def _wrap_pipeline_modules(self, pipeline: Any) -> None:
+        for tag in ("image_encoder", "unet", "vae"):
+            module = getattr(pipeline, tag, None)
+            if module is None:
+                continue
+            wrapped = self.runtime.wrap_module(module, tag=tag)
+            setattr(pipeline, tag, wrapped)
+            self.components[tag] = wrapped
+
+    def _apply_adapters(self, pipeline: Any) -> None:
+        if not self.adapters:
+            return
+        if not hasattr(pipeline, "load_lora_weights"):
+            raise DependencyUnavailableError("Current pipeline does not support LoRA loading.")
+        for adapter in self.adapters:
+            pipeline.load_lora_weights(adapter.path)
+            if hasattr(pipeline, "fuse_lora"):
+                pipeline.fuse_lora(lora_scale=adapter.scale)
