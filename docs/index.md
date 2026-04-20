@@ -53,17 +53,9 @@ OmniRT 为图像、视频和音频驱动数字人模型提供统一的 CLI、Pyt
 
 ## 模型版图
 
-### 图像模型
+Registry 的完整清单由自动生成页提供：[_generated/models.md](_generated/models.md)，也可本地运行 `omnirt models`。
 
-`sd15` `sd21` `sdxl-base-1.0` `sdxl-turbo` `sd3-medium` `sd3.5-large` `flux-dev` `flux-schnell` `flux2.dev` `glm-image` `qwen-image` `omnigen`
-
-### 视频模型
-
-`svd` `svd-xt` `cogvideox-2b` `cogvideox-5b` `wan2.1-*` `wan2.2-*` `hunyuan-video` `helios-*` `sana-video` `ltx-video` `ltx2-i2v`
-
-### 数字人与扩展路径
-
-`soulx-flashtalk-14b` 与 `image2image` 当前都已公开；`inpaint`、`edit`、`video2video` 的能力已经部分接线，但仍在继续向更完整的公开任务面演进。
+`soulx-flashtalk-14b` 和 `image2image` 均已公开；`inpaint`、`edit`、`video2video` 底层接线已部分铺设，但仍在向完整公开任务面演进。
 
 ## 稳定边界
 

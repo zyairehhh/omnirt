@@ -53,17 +53,9 @@ The recommended path is to start with model discovery and request validation, th
 
 ## Model map
 
-### Image models
+The authoritative list of registered models is generated from the live registry and lives at [_generated/models.md](_generated/models.md). Run `omnirt models` locally for the same view.
 
-`sd15` `sd21` `sdxl-base-1.0` `sdxl-turbo` `sd3-medium` `sd3.5-large` `flux-dev` `flux-schnell` `flux2.dev` `glm-image` `qwen-image` `omnigen`
-
-### Video models
-
-`svd` `svd-xt` `cogvideox-2b` `cogvideox-5b` `wan2.1-*` `wan2.2-*` `hunyuan-video` `helios-*` `sana-video` `ltx-video` `ltx2-i2v`
-
-### Avatar and future surfaces
-
-`soulx-flashtalk-14b` and `image2image` are public today. The runtime already contains substantial support for `inpaint`, `edit`, and `video2video`, but those surfaces are still evolving.
+`soulx-flashtalk-14b` and `image2image` are public today. `inpaint`, `edit`, and `video2video` already have substantial runtime plumbing but are still evolving as public task surfaces.
 
 ## Stable boundary
 

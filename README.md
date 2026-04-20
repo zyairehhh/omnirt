@@ -34,21 +34,15 @@ omnirt models
 omnirt models flux2.dev
 ```
 
-## Supported Model Families
+## Supported Models
 
-Representative families currently wired into the registry:
+The authoritative list is generated from the live registry. See
+[docs/_generated/models.en.md](./docs/_generated/models.en.md) (Chinese: [docs/_generated/models.md](./docs/_generated/models.md))
+or run `omnirt models` locally.
 
-- Stable Diffusion: `sd15`, `sd21`, `sdxl-base-1.0`, `sdxl-refiner-1.0`, `sdxl-turbo`, `sd3-medium`, `sd3.5-large`, `sd3.5-large-turbo`
-- Flux: `flux-dev`, `flux-depth`, `flux-schnell`, `flux-canny`, `flux-fill`, `flux-kontext`, `flux2.dev`, `flux2-dev`
-- Generalist image: `chronoedit`, `kolors`, `glm-image`, `hunyuan-image-2.1`, `omnigen`, `qwen-image`, `qwen-image-edit`, `qwen-image-edit-plus`, `qwen-image-layered`, `sana-1.6b`, `ovis-image`, `hidream-i1`, `pixart-sigma`, `bria-3.2`, `lumina-t2x`
-- Video: `svd`, `svd-xt`, `animate-diff-sdxl`, `mochi`, `cogvideox-2b`, `cogvideox-5b`, `kandinsky5-t2v`, `kandinsky5-i2v`, `wan2.1-*`, `wan2.2-*`, `hunyuan-video`, `hunyuan-video-1.5-*`, `helios-*`, `sana-video`, `ltx-video`, `ltx2-i2v`, `skyreels-v2`
-- Talking avatar: `soulx-flashtalk-14b` on Ascend
-
-Current public interfaces are stable enough to build against for generation, validation, model discovery, and artifact export. `image2image` is now a documented public task surface, with `sdxl-base-1.0`, `sdxl-refiner-1.0`, `sd15`, and `sd21` as the recommended starting points. `inpaint`, `edit`, and `video2video` are still evolving.
+Current public interfaces are stable enough to build against for generation, validation, model discovery, and artifact export. `image2image` is now a public task surface with `sdxl-base-1.0`, `sdxl-refiner-1.0`, `sd15`, and `sd21` as the recommended starting points. `inpaint`, `edit`, and `video2video` are still evolving.
 
 ## Quick Start
-
-Install the package for local development:
 
 ```bash
 python -m pip install -e '.[dev]'
@@ -56,83 +50,9 @@ python -m omnirt --help
 pytest
 ```
 
-Install runtime dependencies if you want to execute real model pipelines:
+Runtime extras (`'.[runtime,dev]'`) and docs extras (`'.[docs]'`) are installed separately when needed.
 
-```bash
-python -m pip install -e '.[runtime,dev]'
-```
-
-Install docs dependencies if you want to preview or work on the documentation site:
-
-```bash
-python -m pip install -e '.[docs]'
-```
-
-## First Request
-
-Validate a request before execution:
-
-```bash
-omnirt validate \
-  --task text2image \
-  --model qwen-image \
-  --prompt "a poster with a bold title" \
-  --backend cpu-stub
-```
-
-Run a simple generation:
-
-```bash
-omnirt generate \
-  --task text2image \
-  --model sd15 \
-  --prompt "a lighthouse in fog" \
-  --backend cuda \
-  --preset fast
-```
-
-Run a minimal `image2image` request:
-
-```bash
-omnirt generate \
-  --task image2image \
-  --model sdxl-base-1.0 \
-  --image input.png \
-  --prompt "cinematic concept art" \
-  --backend cuda
-```
-
-YAML request example:
-
-```yaml
-task: text2image
-model: flux2.dev
-backend: auto
-inputs:
-  prompt: "a cinematic sci-fi city at sunrise"
-config:
-  preset: balanced
-  width: 1024
-  height: 1024
-```
-
-Run it with:
-
-```bash
-omnirt generate --config request.yaml --json
-```
-
-`model_path` can point to either:
-
-- a local Diffusers directory
-- a Hugging Face repo id such as `stabilityai/stable-diffusion-xl-base-1.0`
-
-For single-file LoRA weights, use a local `.safetensors` file or an explicit Hugging Face ref such as:
-
-```text
-hf://owner/repo/path/to/adapter.safetensors
-hf://owner/repo/path/to/adapter.safetensors?revision=main
-```
+Full walkthrough — install variants, first `validate` / `generate` commands, YAML request format, presets, `hf://` single-file LoRA refs — lives in [docs/getting-started.en.md](./docs/getting-started.en.md).
 
 ## Python API
 
@@ -142,34 +62,12 @@ from omnirt import generate, requests, validate
 req = requests.text2image(
     model="flux2.dev",
     prompt="a cinematic sci-fi city at sunrise",
-    width=1024,
-    height=1024,
     preset="balanced",
 )
-
-validation = validate(req, backend="cpu-stub")
 result = generate(req, backend="cuda")
 ```
 
-Pipeline-style convenience wrapper:
-
-```python
-import omnirt
-
-pipe = omnirt.pipeline("sd15", backend="cpu-stub")
-validation = pipe.validate(prompt="a lighthouse in fog", preset="fast")
-```
-
-The same public API also covers `image2image`:
-
-```python
-img2img = requests.image2image(
-    model="sdxl-base-1.0",
-    image="input.png",
-    prompt="cinematic concept art",
-    strength=0.8,
-)
-```
+Full reference — typed request helpers for every task, `pipeline(...)` convenience wrapper, RunReport fields — lives in [docs/python-api.en.md](./docs/python-api.en.md).
 
 ## Validation And Testing
 
@@ -197,7 +95,8 @@ Real end-to-end generation still depends on the target hardware stack, runtime l
 - China deployment: [docs/china-deployment.md](./docs/china-deployment.md)
 - Architecture notes: [docs/architecture.md](./docs/architecture.md)
 - Service schema: [docs/service-schema.md](./docs/service-schema.md)
-- Interface proposal: [docs/interface-improvement-proposal.md](./docs/interface-improvement-proposal.md)
+- Presets: [docs/presets.md](./docs/presets.md)
+- Interface decision record: [docs/adr/0002-interface-improvements.md](./docs/adr/0002-interface-improvements.md)
 
 ## Utilities
 

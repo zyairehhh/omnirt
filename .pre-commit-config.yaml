@@ -1,0 +1,18 @@
+# Minimal pre-commit scaffold.
+#
+# Install once:   python -m pip install pre-commit && pre-commit install
+# Run on demand:  pre-commit run --all-files
+#
+# We deliberately start with one local hook that keeps docs/_generated/ in sync
+# with the live registry, so that adding a model and forgetting the doc
+# regeneration is caught before review. Add new hooks as the team wants them.
+
+repos:
+  - repo: local
+    hooks:
+      - id: generate-models-doc
+        name: Regenerate docs/_generated/models.md if the registry changed
+        entry: python scripts/generate_models_doc.py --check
+        language: system
+        pass_filenames: false
+        files: ^(src/omnirt/(core/registry\.py|models/)|docs/_generated/|scripts/generate_models_doc\.py)

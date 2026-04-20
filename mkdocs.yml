@@ -56,6 +56,7 @@ plugins:
             - Usage:
                 - CLI: cli.md
                 - Python API: python-api.md
+                - Presets: presets.md
             - Guides:
                 - Architecture: architecture.md
                 - Service Schema: service-schema.md
@@ -63,11 +64,14 @@ plugins:
                 - Support Status: support-status.md
                 - China Deployment: china-deployment.md
                 - Ascend Backend: backend-ascend.md
+            - Reference:
+                - Supported Models (generated): _generated/models.md
             - Roadmap:
                 - Model Support Roadmap: model-support-roadmap.md
-                - Interface Improvement Proposal: interface-improvement-proposal.md
+                - vLLM-Omni Gap Roadmap: vllm-omni-gap-roadmap.md
             - Decisions:
-                - ADR 0001: adr/0001-v0.1-scope.md
+                - ADR 0001 v0.1 Scope: adr/0001-v0.1-scope.md
+                - ADR 0002 Interface Improvements: adr/0002-interface-improvements.md
             - Project:
                 - Publishing Docs: publishing-docs.md
 
@@ -80,6 +84,7 @@ nav:
   - 使用指南:
       - CLI: cli.md
       - Python API: python-api.md
+      - Presets: presets.md
   - 深入说明:
       - 架构说明: architecture.md
       - 服务协议: service-schema.md
@@ -87,10 +92,13 @@ nav:
       - 当前支持状态: support-status.md
       - 中国区部署: china-deployment.md
       - Ascend 后端: backend-ascend.md
+  - 参考:
+      - 支持模型（自动生成）: _generated/models.md
   - 规划:
       - 模型支持路线图: model-support-roadmap.md
-      - 接口改进提案: interface-improvement-proposal.md
+      - 与 vLLM-Omni 的能力缺口: vllm-omni-gap-roadmap.md
   - 决策记录:
-      - ADR 0001: adr/0001-v0.1-scope.md
+      - ADR 0001 v0.1 范围: adr/0001-v0.1-scope.md
+      - ADR 0002 接口改进: adr/0002-interface-improvements.md
   - 项目维护:
       - 文档发布: publishing-docs.md

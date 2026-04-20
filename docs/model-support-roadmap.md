@@ -22,60 +22,7 @@
 
 ## 当前快照
 
-当前已实现：
-
-- `sd15`
-- `sd21`
-- `sdxl-base-1.0`
-- `sdxl-refiner-1.0`
-- `sdxl-turbo`
-- `animate-diff-sdxl`
-- `sd3-medium`
-- `sd3.5-large`
-- `sd3.5-large-turbo`
-- `kolors`
-- `svd`
-- `svd-xt`
-- `flux-dev`
-- `flux-depth`
-- `flux-schnell`
-- `flux-canny`
-- `flux-fill`
-- `flux-kontext`
-- `flux2.dev` / `flux2-dev`
-- `chronoedit`
-- `glm-image`
-- `hunyuan-image-2.1`
-- `omnigen`
-- `qwen-image`
-- `qwen-image-edit`
-- `qwen-image-edit-plus`
-- `qwen-image-layered`
-- `sana-1.6b`
-- `ovis-image`
-- `hidream-i1`
-- `pixart-sigma`
-- `bria-3.2`
-- `lumina-t2x`
-- `mochi`
-- `cogvideox-2b`
-- `cogvideox-5b`
-- `kandinsky5-t2v`
-- `kandinsky5-i2v`
-- `wan2.1-t2v-14b`
-- `wan2.1-i2v-14b`
-- `wan2.2-t2v-14b`
-- `wan2.2-i2v-14b`
-- `hunyuan-video`
-- `hunyuan-video-1.5-t2v`
-- `hunyuan-video-1.5-i2v`
-- `helios-t2v`
-- `helios-i2v`
-- `sana-video`
-- `ltx-video`
-- `ltx2-i2v`
-- `skyreels-v2`
-- `soulx-flashtalk-14b`
+完整的已实现清单由 registry 自动生成，见 [_generated/models.md](_generated/models.md)。本文档专注于优先级与待办。
 
 当前优先级最高、但尚未支持的目标：
 

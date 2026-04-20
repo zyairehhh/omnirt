@@ -14,56 +14,7 @@ Last updated: `2026-04-20`
 
 ## Integrated models
 
-### Image generation
-
-- `sd15`
-- `sd21`
-- `sdxl-base-1.0`
-- `sdxl-refiner-1.0`
-- `sdxl-turbo`
-- `sd3-medium`
-- `sd3.5-large`
-- `sd3.5-large-turbo`
-- `flux-dev`
-- `flux-schnell`
-- `flux-fill`
-- `flux-kontext`
-- `flux2.dev`
-- `flux2-dev`
-- `glm-image`
-- `hunyuan-image-2.1`
-- `omnigen`
-- `qwen-image`
-- `qwen-image-edit`
-- `qwen-image-edit-plus`
-- `sana-1.6b`
-- `ovis-image`
-- `hidream-i1`
-
-### Video generation
-
-- `svd`
-- `svd-xt`
-- `cogvideox-2b`
-- `cogvideox-5b`
-- `kandinsky5-t2v`
-- `kandinsky5-i2v`
-- `wan2.1-t2v-14b`
-- `wan2.1-i2v-14b`
-- `wan2.2-t2v-14b`
-- `wan2.2-i2v-14b`
-- `hunyuan-video`
-- `hunyuan-video-1.5-t2v`
-- `hunyuan-video-1.5-i2v`
-- `helios-t2v`
-- `helios-i2v`
-- `sana-video`
-- `ltx-video`
-- `ltx2-i2v`
-
-### Audio-driven video
-
-- `soulx-flashtalk-14b`
+The full list is generated from the live registry: [_generated/models.md](_generated/models.md). This page only tracks real-hardware smoke status and partial-support notes.
 
 ## Real hardware smoke completed
 

@@ -22,44 +22,7 @@ Current implementation note:
 
 ## Current snapshot
 
-Implemented today:
-
-- `sd15`
-- `sd21`
-- `sdxl-base-1.0`
-- `sdxl-turbo`
-- `sd3-medium`
-- `sd3.5-large`
-- `sd3.5-large-turbo`
-- `svd`
-- `svd-xt`
-- `flux-dev`
-- `flux-schnell`
-- `flux2.dev` / `flux2-dev`
-- `glm-image`
-- `hunyuan-image-2.1`
-- `omnigen`
-- `qwen-image`
-- `sana-1.6b`
-- `ovis-image`
-- `hidream-i1`
-- `cogvideox-2b`
-- `cogvideox-5b`
-- `kandinsky5-t2v`
-- `kandinsky5-i2v`
-- `wan2.1-t2v-14b`
-- `wan2.1-i2v-14b`
-- `wan2.2-t2v-14b`
-- `wan2.2-i2v-14b`
-- `hunyuan-video`
-- `hunyuan-video-1.5-t2v`
-- `hunyuan-video-1.5-i2v`
-- `helios-t2v`
-- `helios-i2v`
-- `sana-video`
-- `ltx-video`
-- `ltx2-i2v`
-- `soulx-flashtalk-14b`
+The authoritative list of implemented models is generated from the live registry: [_generated/models.md](_generated/models.md). This document focuses on priorities and outstanding work.
 
 Highest-priority unsupported targets:
 

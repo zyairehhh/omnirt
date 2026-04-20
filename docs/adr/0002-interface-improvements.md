@@ -1,6 +1,16 @@
-# OmniRT 接口改进提案
+# ADR 0002：接口改进决策
 
-本文档从用户体验角度给出一份务实的 OmniRT 接口演进路线图。
+## 状态
+
+已接受（2026-04-20）
+
+## 背景
+
+`omnirt` v0.1 只定义了最小请求 / 返回契约。随着模型家族扩张到 40+ 个，仅靠现状的 `GenerateRequest` / CLI 已经无法在模型发现、请求校验、preset 复用等方面给到用户足够的自服务能力。本文档（最初以 "OmniRT 接口改进提案" 形式草拟）收敛出当时达成共识的方向，并作为一条历史决策记录存档。
+
+## 决策
+
+从用户体验角度给出的 OmniRT 接口演进路线图：
 
 当前接口已经足够支撑内部工程使用和早期采用者，但对于更广泛的开源用户来说，还不够完整，也不够容易被发现与理解。
 
@@ -269,3 +279,9 @@ image = pipe(prompt="hello", num_inference_steps=30)
 - clearer errors
 
 This would deliver the largest usability improvement for the least surface-area change.
+
+## 后果
+
+- 这份决策中提到的 `ModelCapabilities`、`omnirt models`、`omnirt validate`、preset 体系已全部落地（见 [src/omnirt/core/registry.py](https://github.com/datascale-ai/opensource/tree/main/omnirt/src/omnirt/core/registry.py)、[src/omnirt/cli/main.py](https://github.com/datascale-ai/opensource/tree/main/omnirt/src/omnirt/cli/main.py)、[src/omnirt/core/presets.py](https://github.com/datascale-ai/opensource/tree/main/omnirt/src/omnirt/core/presets.py)）
+- 本文作为历史决策留档；文档层面的可发现性改进统一由 [docs/_generated/models.md](../_generated/models.md)、[docs/presets.md](../presets.md) 与 [docs/model-onboarding.md](../model-onboarding.md) 承接
+- 后续涉及请求面的改动（新 task、新 adapter 种类等）若与本决策冲突，应新起一份 ADR 明确取舍

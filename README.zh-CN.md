@@ -34,21 +34,15 @@ omnirt models
 omnirt models flux2.dev
 ```
 
-## 已支持模型家族
+## 已支持模型
 
-当前已经接入 registry 的代表性模型家族：
+权威清单由 registry 自动生成，见
+[docs/_generated/models.md](./docs/_generated/models.md)（英文：[docs/_generated/models.en.md](./docs/_generated/models.en.md)），
+也可本地运行 `omnirt models` 查看。
 
-- Stable Diffusion：`sd15`、`sd21`、`sdxl-base-1.0`、`sdxl-refiner-1.0`、`sdxl-turbo`、`sd3-medium`、`sd3.5-large`、`sd3.5-large-turbo`
-- Flux：`flux-dev`、`flux-schnell`、`flux-fill`、`flux-kontext`、`flux2.dev`、`flux2-dev`
-- 通用图像：`glm-image`、`hunyuan-image-2.1`、`omnigen`、`qwen-image`、`qwen-image-edit`、`qwen-image-edit-plus`、`sana-1.6b`、`ovis-image`、`hidream-i1`
-- 视频：`svd`、`svd-xt`、`cogvideox-2b`、`cogvideox-5b`、`kandinsky5-t2v`、`kandinsky5-i2v`、`wan2.1-*`、`wan2.2-*`、`hunyuan-video`、`hunyuan-video-1.5-*`、`helios-*`、`sana-video`、`ltx-video`、`ltx2-i2v`
-- 数字人 / 说话头像：`soulx-flashtalk-14b`，当前在 Ascend 上运行
-
-当前公开接口已经足以支撑生成、校验、模型发现和产物导出。`image2image` 已作为正式公开任务面提供，当前推荐优先使用 `sdxl-base-1.0`、`sdxl-refiner-1.0`、`sd15` 和 `sd21`。`inpaint`、`edit`、`video2video` 仍在继续演进。
+当前公开接口已经足以支撑生成、校验、模型发现和产物导出。`image2image` 是正式公开任务面，推荐优先使用 `sdxl-base-1.0`、`sdxl-refiner-1.0`、`sd15`、`sd21`。`inpaint`、`edit`、`video2video` 仍在演进。
 
 ## 快速开始
-
-安装本地开发依赖：
 
 ```bash
 python -m pip install -e '.[dev]'
@@ -56,83 +50,9 @@ python -m omnirt --help
 pytest
 ```
 
-如果要真正执行模型推理，再安装 runtime 依赖：
+Runtime extras（`'.[runtime,dev]'`）和 docs extras（`'.[docs]'`）需要时再单独安装。
 
-```bash
-python -m pip install -e '.[runtime,dev]'
-```
-
-如果要预览或维护文档站，再安装 docs 依赖：
-
-```bash
-python -m pip install -e '.[docs]'
-```
-
-## 第一条请求
-
-建议先校验再执行：
-
-```bash
-omnirt validate \
-  --task text2image \
-  --model qwen-image \
-  --prompt "一张带有醒目标题的海报" \
-  --backend cpu-stub
-```
-
-执行一条最小生成请求：
-
-```bash
-omnirt generate \
-  --task text2image \
-  --model sd15 \
-  --prompt "a lighthouse in fog" \
-  --backend cuda \
-  --preset fast
-```
-
-执行一条最小 `image2image` 请求：
-
-```bash
-omnirt generate \
-  --task image2image \
-  --model sdxl-base-1.0 \
-  --image input.png \
-  --prompt "cinematic concept art" \
-  --backend cuda
-```
-
-YAML 请求示例：
-
-```yaml
-task: text2image
-model: flux2.dev
-backend: auto
-inputs:
-  prompt: "a cinematic sci-fi city at sunrise"
-config:
-  preset: balanced
-  width: 1024
-  height: 1024
-```
-
-执行方式：
-
-```bash
-omnirt generate --config request.yaml --json
-```
-
-`model_path` 现在可以同时指向：
-
-- 本地 Diffusers 模型目录
-- Hugging Face repo id，例如 `stabilityai/stable-diffusion-xl-base-1.0`
-
-对于单文件 LoRA 权重，可以使用本地 `.safetensors` 文件，或显式的 Hugging Face 引用：
-
-```text
-hf://owner/repo/path/to/adapter.safetensors
-hf://owner/repo/path/to/adapter.safetensors?revision=main
-```
+完整走查——安装变体、第一条 `validate` / `generate`、YAML 请求、preset、`hf://` 单文件 LoRA 引用——见 [docs/getting-started.md](./docs/getting-started.md)。
 
 ## Python API
 
@@ -142,34 +62,12 @@ from omnirt import generate, requests, validate
 req = requests.text2image(
     model="flux2.dev",
     prompt="a cinematic sci-fi city at sunrise",
-    width=1024,
-    height=1024,
     preset="balanced",
 )
-
-validation = validate(req, backend="cpu-stub")
 result = generate(req, backend="cuda")
 ```
 
-pipeline 风格便捷层：
-
-```python
-import omnirt
-
-pipe = omnirt.pipeline("sd15", backend="cpu-stub")
-validation = pipe.validate(prompt="a lighthouse in fog", preset="fast")
-```
-
-`image2image` 也使用同一套公开入口：
-
-```python
-img2img = requests.image2image(
-    model="sdxl-base-1.0",
-    image="input.png",
-    prompt="cinematic concept art",
-    strength=0.8,
-)
-```
+完整参考——每个 task 的 typed request helper、`pipeline(...)` 便捷封装、RunReport 字段——见 [docs/python-api.md](./docs/python-api.md)。
 
 ## 测试与验证
 
@@ -196,7 +94,8 @@ img2img = requests.image2image(
 - 中国区部署说明：[docs/china-deployment.md](./docs/china-deployment.md)
 - 架构说明：[docs/architecture.md](./docs/architecture.md)
 - 服务协议草案：[docs/service-schema.md](./docs/service-schema.md)
-- 接口改进提案：[docs/interface-improvement-proposal.md](./docs/interface-improvement-proposal.md)
+- Presets：[docs/presets.md](./docs/presets.md)
+- 接口改进决策记录：[docs/adr/0002-interface-improvements.md](./docs/adr/0002-interface-improvements.md)
 
 ## 工具脚本
 

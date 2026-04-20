@@ -16,8 +16,26 @@ jobs:
           python-version: "3.11"
       - name: Install package
         run: python -m pip install -e '.[dev]'
+      - name: Verify package build
+        run: python -m build
       - name: Run unit and parity tests
-        run: pytest tests/unit tests/parity
+        run: pytest tests/unit tests/parity --maxfail=1
+
+  docs-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dev + docs extras
+        run: python -m pip install -e '.[dev,docs]'
+      - name: Check generated models doc is up to date
+        run: python scripts/generate_models_doc.py --check
+      - name: Check bilingual docs parity
+        run: python scripts/check_bilingual_parity.py
+      - name: Build documentation site
+        run: mkdocs build --strict
 
   cuda-smoke:
     if: ${{ vars.OMNIRT_ENABLE_CUDA_RUNNER == 'true' }}

@@ -14,66 +14,7 @@
 
 ## 已接入模型
 
-### 图像生成
-
-- `sd15`
-- `sd21`
-- `sdxl-base-1.0`
-- `sdxl-refiner-1.0`
-- `sdxl-turbo`
-- `sd3-medium`
-- `sd3.5-large`
-- `sd3.5-large-turbo`
-- `kolors`
-- `flux-dev`
-- `flux-depth`
-- `flux-schnell`
-- `flux-canny`
-- `flux-fill`
-- `flux-kontext`
-- `flux2.dev`
-- `flux2-dev`
-- `glm-image`
-- `hunyuan-image-2.1`
-- `omnigen`
-- `qwen-image`
-- `qwen-image-edit`
-- `qwen-image-edit-plus`
-- `qwen-image-layered`
-- `sana-1.6b`
-- `ovis-image`
-- `hidream-i1`
-- `pixart-sigma`
-- `bria-3.2`
-- `lumina-t2x`
-
-### 视频生成
-
-- `svd`
-- `svd-xt`
-- `animate-diff-sdxl`
-- `mochi`
-- `cogvideox-2b`
-- `cogvideox-5b`
-- `kandinsky5-t2v`
-- `kandinsky5-i2v`
-- `wan2.1-t2v-14b`
-- `wan2.1-i2v-14b`
-- `wan2.2-t2v-14b`
-- `wan2.2-i2v-14b`
-- `hunyuan-video`
-- `hunyuan-video-1.5-t2v`
-- `hunyuan-video-1.5-i2v`
-- `helios-t2v`
-- `helios-i2v`
-- `sana-video`
-- `ltx-video`
-- `ltx2-i2v`
-- `skyreels-v2`
-
-### 音频驱动视频
-
-- `soulx-flashtalk-14b`
+完整清单由 registry 自动生成：[_generated/models.md](_generated/models.md)。本文档只追踪「真机 smoke」与「部分支持」两项状态。
 
 ## 已完成真机 smoke
 

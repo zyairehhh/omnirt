@@ -1,4 +1,14 @@
-# OmniRT Interface Improvement Proposal
+# ADR 0002: Interface Improvements
+
+## Status
+
+Accepted (2026-04-20)
+
+## Context
+
+OmniRT v0.1 only defined the minimum request/result contract. As the supported model list grew past 40 families, the original `GenerateRequest` + CLI surface was no longer sufficient for self-service model discovery, validation, or preset reuse. This document (originally drafted as "OmniRT Interface Improvement Proposal") captures the design consensus reached at that time and is archived here as a historical decision record.
+
+## Decision
 
 This document proposes a practical interface roadmap for OmniRT from the user-experience perspective.
 
@@ -264,3 +274,9 @@ If only one short iteration is available, the best slice is:
 - clearer errors
 
 This would deliver the largest usability improvement for the least surface-area change.
+
+## Consequences
+
+- The `ModelCapabilities`, `omnirt models`, `omnirt validate`, and preset system proposed here have all shipped (see [src/omnirt/core/registry.py](https://github.com/datascale-ai/omnirt/blob/main/src/omnirt/core/registry.py), [src/omnirt/cli/main.py](https://github.com/datascale-ai/omnirt/blob/main/src/omnirt/cli/main.py), [src/omnirt/core/presets.py](https://github.com/datascale-ai/omnirt/blob/main/src/omnirt/core/presets.py)).
+- This page is retained as a historical record. Discoverability work now lives in [docs/_generated/models.en.md](../_generated/models.en.md), [docs/presets.en.md](../presets.en.md), and [docs/model-onboarding.en.md](../model-onboarding.en.md).
+- Future surface-level changes (new tasks, new adapter kinds, etc.) that diverge from the decision recorded here should open a new ADR rather than silently amending this one.
