@@ -1,10 +1,10 @@
-"""Helpers for cross-backend parity checks."""
+"""Helpers for cross-backend and cross-executor parity checks."""
 
 from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence
 
 from omnirt.core.types import DependencyUnavailableError
 
@@ -36,6 +36,13 @@ def psnr(reference, candidate) -> float:
     return float(20.0 * _log10(255.0 / (mse ** 0.5)))
 
 
+def image_metrics(reference, candidate) -> dict:
+    return {
+        "psnr": psnr(reference, candidate),
+        "ssim": ssim(reference, candidate),
+    }
+
+
 def ssim(reference, candidate) -> float:
     ref = _to_array(reference)
     cand = _to_array(candidate)
@@ -62,6 +69,28 @@ def average_video_metrics(reference_frames: Sequence[object], candidate_frames: 
         "psnr_mean": float(sum(psnr_scores) / len(psnr_scores)),
         "ssim_mean": float(sum(ssim_scores) / len(ssim_scores)),
     }
+
+
+def check_image_parity(reference, candidate, *, min_psnr: float = 40.0, min_ssim: float = 0.99) -> dict:
+    metrics = image_metrics(reference, candidate)
+    metrics["ok"] = bool(metrics["psnr"] >= min_psnr and metrics["ssim"] >= min_ssim)
+    metrics["min_psnr"] = float(min_psnr)
+    metrics["min_ssim"] = float(min_ssim)
+    return metrics
+
+
+def check_video_parity(
+    reference_frames: Sequence[object],
+    candidate_frames: Sequence[object],
+    *,
+    min_psnr_mean: float = 40.0,
+    min_ssim_mean: float = 0.99,
+) -> dict:
+    metrics = average_video_metrics(reference_frames, candidate_frames)
+    metrics["ok"] = bool(metrics["psnr_mean"] >= min_psnr_mean and metrics["ssim_mean"] >= min_ssim_mean)
+    metrics["min_psnr_mean"] = float(min_psnr_mean)
+    metrics["min_ssim_mean"] = float(min_ssim_mean)
+    return metrics
 
 
 def file_sha256(path: str) -> str:

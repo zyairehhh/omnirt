@@ -304,3 +304,33 @@ def test_validate_request_rejects_invalid_device_map() -> None:
     assert "device_map must be" in validation.format_errors()
 
     clear_registry()
+
+
+def test_validate_request_rejects_invalid_launcher() -> None:
+    clear_registry()
+
+    @register_model(
+        id="dummy-flashtalk",
+        task="audio2video",
+        capabilities=ModelCapabilities(
+            required_inputs=("image", "audio"),
+            supported_config=("launcher",),
+        ),
+    )
+    class DummyPipeline:
+        pass
+
+    validation = validate_request(
+        GenerateRequest(
+            task="audio2video",
+            model="dummy-flashtalk",
+            backend="cpu-stub",
+            inputs={"image": "/tmp/does-not-exist.png", "audio": "/tmp/does-not-exist.wav"},
+            config={"launcher": "bogus"},
+        )
+    )
+
+    assert validation.ok is False
+    assert "Unsupported launcher" in validation.format_errors()
+
+    clear_registry()

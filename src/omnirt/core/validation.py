@@ -11,7 +11,7 @@ from omnirt.backends import resolve_backend
 from omnirt.core.presets import resolve_preset
 from omnirt.core.registry import ModelSpec, get_model, list_model_variants, list_models, supported_config_for_spec
 from omnirt.core.types import GenerateRequest, ModelNotRegisteredError, OmniRTError
-from omnirt.launcher import resolve_config_device_map, resolve_devices
+from omnirt.launcher import resolve_config_device_map, resolve_devices, resolve_launcher
 
 
 @dataclass
@@ -148,6 +148,12 @@ def validate_request(request: GenerateRequest, *, backend: Optional[str] = None)
         resolve_devices(result.resolved_config.get("devices"))
     except ValueError as exc:
         result.add_error(str(exc))
+    launcher_name = result.resolved_config.get("launcher")
+    if launcher_name is not None:
+        try:
+            resolve_launcher(str(launcher_name))
+        except ValueError as exc:
+            result.add_error(str(exc))
     group_offload_type = result.resolved_config.get("group_offload_type")
     if group_offload_type is not None and group_offload_type not in {"block_level", "leaf_level"}:
         result.add_error("group_offload_type must be either 'block_level' or 'leaf_level'.")

@@ -84,7 +84,11 @@ def add_request_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--cpu-offload", action="store_true", help="Enable CPU offload for script-backed models that support it.")
     parser.add_argument("--max-chunks", type=int, help="Limit generated audio chunks for streaming avatar models.")
     parser.add_argument("--python-executable", help="Python interpreter used to launch external model scripts.")
-    parser.add_argument("--launcher", choices=["python", "torchrun"], help="External launcher for script-backed models.")
+    parser.add_argument(
+        "--launcher",
+        choices=["python", "torchrun", "accelerate"],
+        help="External launcher for script-backed models.",
+    )
     parser.add_argument("--nproc-per-node", type=int, help="Process count for multi-card torchrun launches.")
     parser.add_argument("--visible-devices", help="Device visibility override, for example 0,1,2,3,4,5,6,7 on Ascend.")
     parser.add_argument("--ascend-env-script", help="Ascend environment script to source before launching an external model.")

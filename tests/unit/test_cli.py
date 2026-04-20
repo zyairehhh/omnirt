@@ -287,6 +287,29 @@ def test_request_from_args_accepts_device_placement_flags() -> None:
     assert request.config["devices"] == "cuda:0,cuda:1"
 
 
+def test_request_from_args_accepts_accelerate_launcher() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "generate",
+            "--task",
+            "audio2video",
+            "--model",
+            "soulx-flashtalk-14b",
+            "--image",
+            "speaker.png",
+            "--audio",
+            "voice.wav",
+            "--launcher",
+            "accelerate",
+        ]
+    )
+
+    request = request_from_args(args, parser)
+
+    assert request.config["launcher"] == "accelerate"
+
+
 def test_main_prints_clean_omnirt_errors(monkeypatch, capsys) -> None:
     from omnirt.core.types import BackendUnavailableError
 

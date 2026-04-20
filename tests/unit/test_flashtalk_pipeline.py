@@ -130,3 +130,60 @@ def test_flashtalk_pipeline_launches_external_script(tmp_path, monkeypatch) -> N
     assert captured["cwd"] == str(repo_path)
     assert captured["env"]["ASCEND_RT_VISIBLE_DEVICES"] == "0,1,2,3,4,5,6,7"
     assert captured["env"]["GPU_NUM"] == "8"
+
+
+def test_flashtalk_pipeline_supports_accelerate_launcher(tmp_path, monkeypatch) -> None:
+    repo_path = tmp_path / "SoulX-FlashTalk"
+    ckpt_dir = repo_path / "models" / "SoulX-FlashTalk-14B"
+    wav2vec_dir = repo_path / "models" / "chinese-wav2vec2-base"
+    repo_path.mkdir()
+    ckpt_dir.mkdir(parents=True)
+    wav2vec_dir.mkdir(parents=True)
+    (repo_path / "generate_video.py").write_text("print('stub')\n", encoding="utf-8")
+    image_path = tmp_path / "speaker.png"
+    audio_path = tmp_path / "voice.wav"
+    image_path.write_bytes(b"fake")
+    audio_path.write_bytes(b"fake")
+    python_executable = tmp_path / "python"
+    python_executable.write_text("", encoding="utf-8")
+    python_executable.chmod(0o755)
+
+    captured = {}
+
+    def fake_run(cmd, check, cwd, env, stdout, stderr, text):
+        captured["cmd"] = cmd
+        shell_command = cmd[-1]
+        assert "accelerate launch --num_processes 2" in shell_command
+        output_path = Path(shell_command.split("--save_file", 1)[1].split()[0].strip("'\""))
+        output_path.write_bytes(b"video")
+
+        class Completed:
+            stdout = "ok"
+
+        return Completed()
+
+    monkeypatch.setattr("omnirt.launcher.base.subprocess.run", fake_run)
+    monkeypatch.setattr("omnirt.models.flashtalk.pipeline.probe_video_file", lambda path: (512, 512, 24))
+
+    request = GenerateRequest(
+        task="audio2video",
+        model="soulx-flashtalk-14b",
+        backend="ascend",
+        inputs={"image": str(image_path), "audio": str(audio_path)},
+        config={
+            "repo_path": str(repo_path),
+            "ckpt_dir": "models/SoulX-FlashTalk-14B",
+            "wav2vec_dir": "models/chinese-wav2vec2-base",
+            "output_dir": str(tmp_path / "outputs"),
+            "python_executable": str(python_executable),
+            "ascend_env_script": "",
+            "launcher": "accelerate",
+            "nproc_per_node": 2,
+        },
+    )
+
+    pipeline = FlashTalkPipeline(runtime=FakeAscendRuntime(), model_spec=build_model_spec())
+    result = pipeline.run(request)
+
+    assert Path(result.outputs[0].path).exists()
+    assert captured["cmd"][:2] == ["bash", "-lc"]
