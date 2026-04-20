@@ -5,13 +5,14 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from omnirt.engine import OmniEngine
+from omnirt.engine.redis_store import RedisJobStore
 from omnirt.server.auth import ApiKeyMiddleware, load_api_keys
 from omnirt.server.model_aliases import load_model_aliases
 from omnirt.server.routes.generate import router as generate_router
 from omnirt.server.routes.health import router as health_router
 from omnirt.server.routes.jobs import router as jobs_router
 from omnirt.server.routes.openai import router as openai_router
-from omnirt.telemetry import PrometheusMetrics, TraceRecorder
+from omnirt.telemetry import OtlpExporter, PrometheusMetrics, TraceRecorder
 
 
 def create_app(
@@ -24,10 +25,13 @@ def create_app(
     max_batch_size: int = 1,
     api_key_file: str | None = None,
     model_aliases_path: str | None = None,
+    redis_url: str | None = None,
+    otlp_endpoint: str | None = None,
 ) -> FastAPI:
     app = FastAPI(title="OmniRT", version="1.0.0")
     metrics = PrometheusMetrics()
-    tracer = TraceRecorder()
+    tracer = TraceRecorder(exporters=[OtlpExporter(endpoint=otlp_endpoint)] if otlp_endpoint else None)
+    job_store = RedisJobStore(redis_url=redis_url) if redis_url else None
     app.state.engine = OmniEngine(
         max_concurrency=max_concurrency,
         pipeline_cache_size=pipeline_cache_size,
@@ -35,9 +39,11 @@ def create_app(
         max_batch_size=max_batch_size,
         metrics=metrics,
         tracer=tracer,
+        job_store=job_store,
     )
     app.state.metrics = metrics
     app.state.tracer = tracer
+    app.state.job_store_backend = "redis" if redis_url else "memory"
     app.state.default_backend = default_backend
     app.state.default_request_config = dict(default_request_config or {})
     app.state.model_aliases = load_model_aliases(model_aliases_path)

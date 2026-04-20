@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import types
+
 from omnirt.core.base_pipeline import BasePipeline
 from omnirt.core.registry import ModelSpec
 from omnirt.core.types import GenerateRequest
+from omnirt.middleware import quantization as quantization_module
 from omnirt.middleware.quantization import QuantizationMiddleware, apply_quantization_runtime
 from omnirt.middleware.tea_cache import TeaCacheMiddleware, apply_tea_cache_runtime
 
@@ -116,3 +119,23 @@ def test_base_pipeline_apply_pipeline_optimizations_invokes_runtime_acceleration
     assert pipeline.unet.quantize_calls[0]["mode"] == "nf4"
     assert pipeline.unet.casting_calls[0]["storage_dtype"] is None
     assert pipeline.unet.tea_cache_calls[0]["ratio"] == 0.4
+
+
+def test_runtime_acceleration_uses_torchao_when_available(monkeypatch) -> None:
+    calls = []
+
+    def fake_apply_dynamic_quant(model=None, target=None, **kwargs):
+        calls.append({"model": model, "target": target, "kwargs": kwargs})
+
+    monkeypatch.setattr(
+        quantization_module.importlib,
+        "import_module",
+        lambda name: types.SimpleNamespace(apply_dynamic_quant=fake_apply_dynamic_quant)
+        if name == "torchao.quantization.quant_api"
+        else None,
+    )
+
+    pipeline = DummyPipelineObject()
+    apply_quantization_runtime(pipeline, config={"quantization": "int8", "quantization_backend": "torchao"})
+
+    assert calls

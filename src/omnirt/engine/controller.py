@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import threading
-from typing import Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Protocol
 
 
 @dataclass(frozen=True)
@@ -13,6 +13,19 @@ class WorkerEndpoint:
     address: str
     models: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
+
+
+class WorkerClient(Protocol):
+    def run_sync(self, request, *, model_spec=None, runtime=None) -> Any:
+        ...
+
+
+class InProcessWorkerClient:
+    def __init__(self, engine: Any) -> None:
+        self.engine = engine
+
+    def run_sync(self, request, *, model_spec=None, runtime=None) -> Any:
+        return self.engine.run_sync(request, model_spec=model_spec, runtime=runtime)
 
 
 class Controller:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from omnirt.engine.controller import Controller, WorkerEndpoint
+from omnirt.engine.controller import Controller, InProcessWorkerClient, WorkerEndpoint
 from omnirt.engine.engine import OmniEngine
 from omnirt.engine.redis_store import RedisJobStore
 from omnirt.engine.result_cache import ResultCache
@@ -17,4 +17,12 @@ def get_default_engine() -> OmniEngine:
     return _DEFAULT_ENGINE
 
 
-__all__ = ["Controller", "OmniEngine", "RedisJobStore", "ResultCache", "WorkerEndpoint", "get_default_engine"]
+__all__ = [
+    "Controller",
+    "InProcessWorkerClient",
+    "OmniEngine",
+    "RedisJobStore",
+    "ResultCache",
+    "WorkerEndpoint",
+    "get_default_engine",
+]

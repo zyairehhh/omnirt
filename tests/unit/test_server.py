@@ -328,3 +328,44 @@ def test_job_websocket_stream_supports_cancel(monkeypatch) -> None:
     assert any(message.get("event") == "control_ack" and message["data"]["cancelled"] is True for message in observed)
     cancelled_job = client.get(f"/v1/jobs/{second_job_id}").json()
     assert cancelled_job["state"] == "cancelled"
+
+
+def test_openai_realtime_route_streams_job_completion(monkeypatch) -> None:
+    @register_model(
+        id="dummy-image",
+        task="text2image",
+        capabilities=ModelCapabilities(required_inputs=("prompt",)),
+    )
+    class DummyPipeline:
+        def __init__(self, **kwargs):
+            pass
+
+        def run(self, req):
+            return _dummy_result(req.task, req.model, req.backend)
+
+    monkeypatch.setattr(api_module, "ensure_registered", lambda: None)
+    app = create_app(default_backend="cpu-stub", max_concurrency=1, pipeline_cache_size=1)
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/realtime") as websocket:
+        websocket.send_json(
+            {
+                "type": "response.create",
+                "response": {
+                    "task": "text2image",
+                    "model": "dummy-image",
+                    "inputs": {"prompt": "hello"},
+                    "config": {},
+                },
+            }
+        )
+        messages = []
+        for _ in range(8):
+            messages.append(websocket.receive_json())
+            if any(message.get("type") == "response.completed" for message in messages):
+                break
+
+    assert any(message.get("type") == "response.created" for message in messages)
+    assert any(message.get("type") == "response.event" for message in messages)
+    completed = next(message for message in messages if message.get("type") == "response.completed")
+    assert completed["job"]["result"]["metadata"]["execution_mode"] == "legacy_call"

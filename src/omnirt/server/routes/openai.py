@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+from contextlib import suppress
+import queue
 import tempfile
 import time
 
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 
 from omnirt.api import validate
 from omnirt.core.types import GenerateRequest, is_generate_result_like
@@ -134,3 +137,80 @@ async def openai_videos_generations(payload: dict, request: Request):
 @router.post("/v1/audio/speech")
 async def openai_audio_speech():
     raise HTTPException(status_code=501, detail="audio/speech compatibility is reserved for a later phase")
+
+
+@router.websocket("/v1/realtime")
+async def openai_realtime(websocket: WebSocket):
+    await websocket.accept()
+    engine = websocket.app.state.engine
+    active_job_id = None
+    active_channel = None
+    try:
+        while True:
+            if active_job_id is None:
+                try:
+                    message = await websocket.receive_json()
+                except WebSocketDisconnect:
+                    break
+                if message.get("type") not in {"response.create", "generate"}:
+                    await websocket.send_json({"type": "error", "error": "unsupported realtime message"})
+                    continue
+                response_payload = message.get("response", message)
+                raw_request = GenerateRequest.from_dict(
+                    {
+                        "task": response_payload["task"],
+                        "model": response_payload["model"],
+                        "backend": _resolve_backend(websocket, response_payload.get("backend")),
+                        "inputs": dict(response_payload.get("inputs", {})),
+                        "config": dict(response_payload.get("config", {})),
+                    }
+                )
+                req = normalize_generate_request(raw_request, websocket.app.state)
+                validation = validate(req, backend=req.backend)
+                if not validation.ok:
+                    await websocket.send_json({"type": "error", "error": validation.format_errors()})
+                    continue
+                job = engine.submit(req, model_spec=validation.model_spec)
+                active_job_id = job.id
+                active_channel = engine.store.subscribe(job.id)
+                await websocket.send_json({"type": "response.created", "job_id": job.id, "trace_id": job.trace_id})
+                continue
+
+            event_task = asyncio.create_task(asyncio.to_thread(active_channel.get, True, 1.0))
+            receive_task = asyncio.create_task(websocket.receive_json())
+            done, pending = await asyncio.wait(
+                {event_task, receive_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            for task in pending:
+                task.cancel()
+                with suppress(asyncio.CancelledError, WebSocketDisconnect):
+                    await task
+
+            if receive_task in done:
+                try:
+                    message = receive_task.result()
+                except WebSocketDisconnect:
+                    break
+                if message.get("type") in {"response.cancel", "cancel"}:
+                    engine.cancel(active_job_id)
+                    await websocket.send_json({"type": "response.cancelled", "job_id": active_job_id})
+
+            if event_task in done:
+                try:
+                    next_event = event_task.result()
+                except queue.Empty:
+                    await websocket.send_json({"type": "keep_alive"})
+                    continue
+                if next_event is None:
+                    break
+                await websocket.send_json({"type": "response.event", "event": next_event.__dict__})
+                latest = engine.get_job(active_job_id)
+                if latest is not None and latest.state in {"succeeded", "failed", "cancelled"}:
+                    await websocket.send_json({"type": "response.completed", "job": latest.to_dict()})
+                    engine.store.unsubscribe(active_job_id, active_channel)
+                    active_job_id = None
+                    active_channel = None
+    finally:
+        if active_job_id is not None and active_channel is not None:
+            engine.store.unsubscribe(active_job_id, active_channel)

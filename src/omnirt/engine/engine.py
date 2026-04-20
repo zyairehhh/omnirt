@@ -13,6 +13,7 @@ from omnirt.backends import resolve_backend
 from omnirt.core.registry import ModelSpec, get_model
 from omnirt.core.types import GenerateRequest, GenerateResult, is_generate_result_like
 from omnirt.dispatch import BatchGroup, JobQueue, JobWorkItem, RequestBatcher, TERMINAL_JOB_STATES, Worker
+from omnirt.engine.controller import Controller, WorkerClient
 from omnirt.engine.job import JobRecord
 from omnirt.engine.pipeline_cache import PipelineCache
 from omnirt.engine.result_cache import ResultCache
@@ -35,6 +36,9 @@ class OmniEngine:
         max_batch_size: int = 1,
         metrics: PrometheusMetrics | None = None,
         tracer: TraceRecorder | None = None,
+        controller: Controller | None = None,
+        worker_id: str = "local",
+        worker_clients: dict[str, WorkerClient] | None = None,
     ) -> None:
         self.store = job_store or InMemoryJobStore()
         self.pipeline_cache = PipelineCache(max_size=pipeline_cache_size)
@@ -43,6 +47,9 @@ class OmniEngine:
         self.batcher = RequestBatcher(batch_window_ms=batch_window_ms, max_batch_size=max_batch_size)
         self.metrics = metrics or PrometheusMetrics()
         self.tracer = tracer or TraceRecorder()
+        self.controller = controller
+        self.worker_id = worker_id
+        self.worker_clients = dict(worker_clients or {})
         self._workers = [
             Worker(
                 name=f"omnirt-worker-{index}",
@@ -58,6 +65,9 @@ class OmniEngine:
     def run_sync(self, request: GenerateRequest, *, model_spec: ModelSpec | None = None, runtime=None):
         spec = model_spec or get_model(request.model, task=request.task)
         selected_runtime = runtime or resolve_backend(request.backend or spec.default_backend)
+        delegated = self._delegate_run_sync(request, model_spec=spec, runtime=selected_runtime)
+        if delegated is not None:
+            return delegated
         job = self._create_job(request, backend_name=getattr(selected_runtime, "name", request.backend or "auto"))
         result = self._execute(job.id, model_spec=spec, runtime=selected_runtime, raise_on_error=True)
         resolved = self.get_job(job.id)
@@ -120,6 +130,17 @@ class OmniEngine:
         for item in items:
             self.metrics.set_queue_depth(priority="default", depth=self.job_queue.qsize())
             self._execute(item.job_id, model_spec=item.model_spec, runtime=item.runtime)
+
+    def _delegate_run_sync(self, request: GenerateRequest, *, model_spec: ModelSpec, runtime):
+        if self.controller is None:
+            return None
+        endpoint = self.controller.route(model=request.model)
+        if endpoint is None or endpoint.worker_id == self.worker_id:
+            return None
+        client = self.worker_clients.get(endpoint.worker_id)
+        if client is None:
+            return None
+        return client.run_sync(request, model_spec=model_spec, runtime=runtime)
 
     def _execute(self, job_id: str, *, model_spec: ModelSpec, runtime, raise_on_error: bool = False):
         job = self.store.get(job_id)

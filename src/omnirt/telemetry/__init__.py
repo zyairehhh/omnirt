@@ -1,6 +1,6 @@
 """Telemetry helpers."""
 
-from omnirt.telemetry.otel import TraceRecorder
+from omnirt.telemetry.otel import OtlpExporter, TraceRecorder
 from omnirt.telemetry.prometheus import PrometheusMetrics
 
-__all__ = ["PrometheusMetrics", "TraceRecorder"]
+__all__ = ["OtlpExporter", "PrometheusMetrics", "TraceRecorder"]

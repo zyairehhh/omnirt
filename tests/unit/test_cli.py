@@ -306,6 +306,22 @@ def test_request_from_args_accepts_quantization_and_tea_cache() -> None:
     assert request.config["tea_cache_interval"] == 2
 
 
+def test_build_parser_accepts_serve_redis_and_otlp_flags() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "serve",
+            "--redis-url",
+            "redis://cache:6379/0",
+            "--otlp-endpoint",
+            "http://collector:4318/v1/traces",
+        ]
+    )
+
+    assert args.redis_url == "redis://cache:6379/0"
+    assert args.otlp_endpoint == "http://collector:4318/v1/traces"
+
+
 def test_request_from_args_accepts_device_placement_flags() -> None:
     parser = build_parser()
     args = parser.parse_args(

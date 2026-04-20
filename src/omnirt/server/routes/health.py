@@ -16,7 +16,7 @@ async def healthz():
 @router.get("/readyz")
 async def readyz(request: Request):
     engine = request.app.state.engine
-    return {"ok": bool(engine.is_ready())}
+    return {"ok": bool(engine.is_ready()), "job_store_backend": getattr(request.app.state, "job_store_backend", "memory")}
 
 
 @router.get("/metrics")

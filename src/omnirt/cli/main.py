@@ -157,6 +157,8 @@ def build_parser() -> argparse.ArgumentParser:
     serve_parser.add_argument("--pipeline-cache-size", type=int, default=4, help="Maximum cached executor instances.")
     serve_parser.add_argument("--api-key-file", help="Optional newline-delimited API key file.")
     serve_parser.add_argument("--model-aliases", help="Optional YAML/JSON alias mapping file.")
+    serve_parser.add_argument("--redis-url", help="Optional Redis URL for cross-process job storage.")
+    serve_parser.add_argument("--otlp-endpoint", help="Optional OTLP/HTTP endpoint used to export traces.")
     serve_parser.add_argument("--device-map", help="Default device placement policy for incoming requests.")
     serve_parser.add_argument("--devices", help="Default comma-separated device list for incoming requests.")
     serve_parser.add_argument("--batch-window-ms", type=int, default=0, help="Queue batching window in milliseconds.")
@@ -522,6 +524,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             model_aliases_path=args.model_aliases,
             batch_window_ms=args.batch_window_ms,
             max_batch_size=args.max_batch_size,
+            redis_url=args.redis_url,
+            otlp_endpoint=args.otlp_endpoint,
         )
         uvicorn.run(app, host=args.host, port=args.port)
         return 0

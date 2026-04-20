@@ -48,3 +48,22 @@ class JobRecord:
         if self.result is not None:
             payload["result"] = self.result.to_dict()
         return payload
+
+    @classmethod
+    def from_dict(cls, payload: Dict[str, Any]) -> "JobRecord":
+        result_payload = payload.get("result")
+        return cls(
+            id=str(payload["id"]),
+            request=GenerateRequest.from_dict(payload["request"]),
+            backend=str(payload["backend"]),
+            state=str(payload.get("state", "queued")),
+            result=GenerateResult.from_dict(result_payload) if isinstance(result_payload, dict) else result_payload,
+            error=payload.get("error"),
+            trace_id=payload.get("trace_id"),
+            worker_id=payload.get("worker_id"),
+            enqueued_at_ms=int(payload.get("enqueued_at_ms", 0) or 0),
+            started_at_ms=payload.get("started_at_ms"),
+            finished_at_ms=payload.get("finished_at_ms"),
+            execution_mode=payload.get("execution_mode"),
+            events=[StageEventRecord.from_dict(item) for item in payload.get("events", [])],
+        )

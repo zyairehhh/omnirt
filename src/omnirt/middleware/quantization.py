@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import inspect
 from typing import Any, Dict, Iterable
 
@@ -72,6 +73,7 @@ def _apply_quantization(target: Any, *, component_name: str, config: Dict[str, A
         "compute_dtype": config.get("layerwise_casting_compute_dtype"),
     }
     if payload["mode"] not in (None, ""):
+        _apply_builtin_quantization(target, payload)
         _maybe_call(
             target,
             ("apply_quantization", "quantize", "set_quantization_config"),
@@ -92,6 +94,62 @@ def _apply_quantization(target: Any, *, component_name: str, config: Dict[str, A
         )
     setattr(target, "_omnirt_quantization", dict(payload))
     setattr(target, "_omnirt_component_name", component_name)
+
+
+def _apply_builtin_quantization(target: Any, payload: Dict[str, Any]) -> None:
+    backend = str(payload.get("backend") or "auto")
+    if backend in {"auto", "torchao"}:
+        if _apply_torchao_quantization(target, payload):
+            return
+
+
+def _apply_torchao_quantization(target: Any, payload: Dict[str, Any]) -> bool:
+    try:
+        quant_api = importlib.import_module("torchao.quantization.quant_api")
+    except ImportError:
+        return False
+    apply_dynamic_quant = getattr(quant_api, "apply_dynamic_quant", None)
+    if not callable(apply_dynamic_quant):
+        return False
+    kwargs = {
+        "target": target,
+        "quant_mode": payload.get("mode"),
+        "dtype": payload.get("storage_dtype"),
+        "config": payload,
+    }
+    try:
+        signature = inspect.signature(apply_dynamic_quant)
+    except (TypeError, ValueError):
+        signature = None
+    if signature is not None:
+        parameters = signature.parameters
+        if "target" in parameters:
+            filtered_kwargs = {
+                key: value
+                for key, value in kwargs.items()
+                if value is not None and key in parameters
+            }
+            try:
+                apply_dynamic_quant(**filtered_kwargs)
+            except TypeError:
+                return False
+            return True
+        if "model" in parameters:
+            filtered_kwargs = {
+                ("model" if key == "target" else key): value
+                for key, value in kwargs.items()
+                if value is not None and ("model" if key == "target" else key) in parameters
+            }
+            try:
+                apply_dynamic_quant(**filtered_kwargs)
+            except TypeError:
+                return False
+            return True
+    try:
+        apply_dynamic_quant(target)
+    except TypeError:
+        return False
+    return True
 
 
 def _maybe_call(target: Any, method_names: tuple[str, ...], kwargs: Dict[str, Any]) -> bool:
