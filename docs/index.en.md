@@ -34,7 +34,7 @@ The shortest path from install to a working `text2image` request.](getting_start
 CLI / Python API, presets, service schema, deployment guides.](user_guide/index.md){ .md-button }
 
 [<strong>🛠️ Contribute to OmniRT</strong>
-Architecture layers, model onboarding, ADRs, vLLM-Omni gap map.](developer_guide/index.md){ .md-button }
+Architecture layers, model onboarding, ADRs, and architecture evolution notes.](developer_guide/index.md){ .md-button }
 
 </div>
 
