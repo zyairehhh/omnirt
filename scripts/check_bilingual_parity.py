@@ -21,6 +21,11 @@ Intentionally out of scope
 - ``docs/_generated/`` (both language files are produced by a script).
 - ``docs/stylesheets/`` and other static assets.
 - ``docs/adr/`` ADRs follow the same convention.
+
+The length-ratio heuristic is additionally waived for directories that contain
+build-time-generated content (currently only ``docs/api_reference/``, where the
+Chinese pages are tiny ``:::`` mkdocstrings directives that expand at render
+time). Pair-existence is still enforced for those directories.
 """
 
 from __future__ import annotations
@@ -35,6 +40,11 @@ from typing import List, Tuple
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_DIR = REPO_ROOT / "docs"
 SKIP_DIRS = ("_generated", "stylesheets")
+# Directories whose content is build-time generated (e.g. mkdocstrings ``:::``
+# directives that expand at render time). Pair existence is still enforced, but
+# the character-length ratio check is waived because the source form doesn't
+# reflect the final rendered size.
+SKIP_LENGTH_CHECK_DIRS = ("api_reference",)
 LENGTH_LOWER_FACTOR = 0.3  # en shorter than 30% of zh characters -> clearly incomplete
 LENGTH_UPPER_FACTOR = 4.0  # en longer than 4.0x zh characters -> likely duplicated content
 # English prose is normally 2x-3x longer than Chinese per character; 4.0x catches
@@ -120,12 +130,14 @@ def check() -> Tuple[List[str], List[str]]:
             failures.append(f"missing English sibling: {rel_en} (expected next to {rel_zh})")
             continue
 
-        ratio = _length_ratio(zh_path, en_path)
-        if ratio and (ratio < LENGTH_LOWER_FACTOR or ratio > LENGTH_UPPER_FACTOR):
-            failures.append(
-                f"length mismatch: {rel_en} is {ratio:.2f}x {rel_zh} "
-                f"(expected between {LENGTH_LOWER_FACTOR:.2f}x and {LENGTH_UPPER_FACTOR:.2f}x)"
-            )
+        rel_parts = zh_path.relative_to(DOCS_DIR).parts[:-1]
+        if not any(part in SKIP_LENGTH_CHECK_DIRS for part in rel_parts):
+            ratio = _length_ratio(zh_path, en_path)
+            if ratio and (ratio < LENGTH_LOWER_FACTOR or ratio > LENGTH_UPPER_FACTOR):
+                failures.append(
+                    f"length mismatch: {rel_en} is {ratio:.2f}x {rel_zh} "
+                    f"(expected between {LENGTH_LOWER_FACTOR:.2f}x and {LENGTH_UPPER_FACTOR:.2f}x)"
+                )
 
         if _zh_ahead_of_en(zh_path, en_path):
             warnings.append(f"zh newer than en: {rel_zh} has commits not yet reflected in {rel_en}")

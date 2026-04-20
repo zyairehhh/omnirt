@@ -1,32 +1,88 @@
 site_name: OmniRT
-site_description: 面向 CUDA 与 Ascend 后端的开源图像与视频生成运行时。
+site_description: 面向 CUDA 与 Ascend 后端的开源图像、视频与音频数字人生成运行时。
 site_url: https://datascale-ai.github.io/omnirt/
 repo_url: https://github.com/datascale-ai/omnirt
 repo_name: datascale-ai/omnirt
+edit_uri: edit/main/docs/
 
 theme:
   name: material
   language: zh
+  logo: assets/logos/omnirt-mark.svg
+  favicon: assets/logos/omnirt-mark.svg
   palette:
-    - scheme: default
-      primary: blue grey
-      accent: blue
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: 切换到深色
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: 切换到浅色
   features:
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
+    - navigation.indexes
+    - navigation.path
     - navigation.top
-    - search.highlight
+    - navigation.tracking
     - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.action.edit
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
 
 markdown_extensions:
   - admonition
   - attr_list
+  - def_list
   - md_in_html
   - tables
+  - footnotes
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.keys
+  - pymdownx.critic
   - toc:
       permalink: true
 
 plugins:
   - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            separate_signature: true
+            show_signature_annotations: true
+            summary: true
+            docstring_style: google
+            filters: ["!^_"]
   - i18n:
       docs_structure: suffix
       fallback_to_default: true
@@ -39,7 +95,7 @@ plugins:
           name: 简体中文
           link: /
           site_name: OmniRT
-          site_description: 面向 CUDA 与 Ascend 后端的开源图像与视频生成运行时。
+          site_description: 面向 CUDA 与 Ascend 后端的开源图像、视频与音频数字人生成运行时。
           theme:
             language: zh
         - locale: en
@@ -47,46 +103,123 @@ plugins:
           name: English
           link: /en/
           site_name: OmniRT
-          site_description: Open image and video generation runtime with CUDA and Ascend backends.
+          site_description: Open image, video, and audio-driven avatar generation runtime with CUDA and Ascend backends.
           theme:
             language: en
           nav:
             - Home: index.md
-            - Getting Started: getting-started.md
-            - Usage:
-                - CLI: cli.md
-                - Python API: python-api.md
-                - Presets: presets.md
-            - Guides:
-                - Architecture: architecture.md
-                - Service Schema: service-schema.md
-                - Model Onboarding: model-onboarding.md
-                - Support Status: support-status.md
-                - Domestic Deployment: china-deployment.md
-                - Ascend Backend: backend-ascend.md
-            - Model List:
-                - Supported Models (generated): _generated/models.md
-            - Project:
-                - Publishing Docs: publishing-docs.md
+            - User Guide:
+                - Overview: user_guide/index.md
+                - Getting Started:
+                    - Quickstart: getting_started/quickstart.md
+                - Generation:
+                    - Overview: user_guide/generation/index.md
+                    - Text to Image: user_guide/generation/text2image.md
+                    - Image to Image: user_guide/generation/image2image.md
+                    - Text to Video: user_guide/generation/text2video.md
+                    - Image to Video: user_guide/generation/image2video.md
+                    - Talking Head: user_guide/generation/talking_head.md
+                - Serving:
+                    - Overview: user_guide/serving/index.md
+                    - CLI: user_guide/serving/cli.md
+                    - Python API: user_guide/serving/python_api.md
+                    - HTTP Server: user_guide/serving/http_server.md
+                - Deployment:
+                    - Overview: user_guide/deployment/index.md
+                    - CUDA: user_guide/deployment/cuda.md
+                    - Ascend Backend: user_guide/deployment/ascend.md
+                    - Domestic Deployment: user_guide/deployment/china_mirrors.md
+                    - Docker: user_guide/deployment/docker.md
+                - Models:
+                    - Overview: user_guide/models/index.md
+                    - Supported Models: user_guide/models/supported_models.md
+                    - Support Status: user_guide/models/support_status.md
+                    - Roadmap: user_guide/models/roadmap.md
+                - Features:
+                    - Overview: user_guide/features/index.md
+                    - Presets: user_guide/features/presets.md
+                    - Validation: user_guide/features/validation.md
+                    - Service Schema: user_guide/features/service_schema.md
+                    - Dispatch & Queue: user_guide/features/dispatch_queue.md
+                    - Telemetry: user_guide/features/telemetry.md
+            - Developer Guide:
+                - Overview: developer_guide/index.md
+                - Contributing: developer_guide/contributing.md
+                - Architecture: developer_guide/architecture.md
+                - Model Onboarding: developer_guide/model_onboarding.md
+                - Backend Onboarding: developer_guide/backend_onboarding.md
+            - API Reference:
+                - Overview: api_reference/index.md
+                - "omnirt": api_reference/top_level.md
+                - "omnirt.requests": api_reference/requests.md
+                - "omnirt.core.types": api_reference/types.md
+                - "omnirt.core.registry": api_reference/registry.md
+                - "omnirt.core.presets": api_reference/presets.md
+                - "omnirt.core.validation": api_reference/validation.md
+                - "omnirt.engine": api_reference/engine.md
+            - CLI Reference: cli_reference/index.md
+            - Community:
+                - Overview: community/index.md
+                - Publishing Docs: community/publishing_docs.md
 
 extra_css:
   - stylesheets/extra.css
 
+extra_javascript:
+  - javascript/logo-theme.js
+
 nav:
   - 首页: index.md
-  - 快速开始: getting-started.md
   - 使用指南:
-      - CLI: cli.md
-      - Python API: python-api.md
-      - Presets: presets.md
-  - 深入说明:
-      - 架构说明: architecture.md
-      - 服务协议: service-schema.md
-      - 模型接入: model-onboarding.md
-      - 当前支持状态: support-status.md
-      - 国内部署: china-deployment.md
-      - Ascend 后端: backend-ascend.md
-  - 模型列表:
-      - 支持模型（自动生成）: _generated/models.md
-  - 项目维护:
-      - 文档发布: publishing-docs.md
+      - 概览: user_guide/index.md
+      - 快速开始:
+          - 快速开始: getting_started/quickstart.md
+      - 生成任务:
+          - 概览: user_guide/generation/index.md
+          - 文本到图像: user_guide/generation/text2image.md
+          - 图像到图像: user_guide/generation/image2image.md
+          - 文本到视频: user_guide/generation/text2video.md
+          - 图像到视频: user_guide/generation/image2video.md
+          - 数字人: user_guide/generation/talking_head.md
+      - 运行入口:
+          - 概览: user_guide/serving/index.md
+          - CLI: user_guide/serving/cli.md
+          - Python API: user_guide/serving/python_api.md
+          - HTTP 服务: user_guide/serving/http_server.md
+      - 部署指南:
+          - 概览: user_guide/deployment/index.md
+          - CUDA: user_guide/deployment/cuda.md
+          - Ascend 后端: user_guide/deployment/ascend.md
+          - 国内部署: user_guide/deployment/china_mirrors.md
+          - Docker: user_guide/deployment/docker.md
+      - 模型:
+          - 概览: user_guide/models/index.md
+          - 模型清单: user_guide/models/supported_models.md
+          - 支持状态: user_guide/models/support_status.md
+          - 路线图: user_guide/models/roadmap.md
+      - 特性:
+          - 概览: user_guide/features/index.md
+          - 预设: user_guide/features/presets.md
+          - 请求校验: user_guide/features/validation.md
+          - 服务协议: user_guide/features/service_schema.md
+          - 派发与队列: user_guide/features/dispatch_queue.md
+          - 遥测: user_guide/features/telemetry.md
+  - 开发者指南:
+      - 概览: developer_guide/index.md
+      - 参与贡献: developer_guide/contributing.md
+      - 架构说明: developer_guide/architecture.md
+      - 模型接入: developer_guide/model_onboarding.md
+      - 后端接入: developer_guide/backend_onboarding.md
+  - API 参考:
+      - 概览: api_reference/index.md
+      - "omnirt": api_reference/top_level.md
+      - "omnirt.requests": api_reference/requests.md
+      - "omnirt.core.types": api_reference/types.md
+      - "omnirt.core.registry": api_reference/registry.md
+      - "omnirt.core.presets": api_reference/presets.md
+      - "omnirt.core.validation": api_reference/validation.md
+      - "omnirt.engine": api_reference/engine.md
+  - CLI 参考: cli_reference/index.md
+  - 社区:
+      - 概览: community/index.md
+      - 文档发布: community/publishing_docs.md

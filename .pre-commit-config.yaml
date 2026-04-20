@@ -11,8 +11,8 @@ repos:
   - repo: local
     hooks:
       - id: generate-models-doc
-        name: Regenerate docs/_generated/models.md if the registry changed
+        name: Regenerate docs/user_guide/models/supported_models.md if the registry changed
         entry: python scripts/generate_models_doc.py --check
         language: system
         pass_filenames: false
-        files: ^(src/omnirt/(core/registry\.py|models/)|docs/_generated/|scripts/generate_models_doc\.py)
+        files: ^(src/omnirt/(core/registry\.py|models/)|docs/user_guide/models/supported_models(\.en)?\.md|scripts/generate_models_doc\.py)

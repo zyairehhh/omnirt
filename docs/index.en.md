@@ -1,124 +1,87 @@
-# OmniRT
+---
+hide:
+  - navigation
+  - toc
+---
 
-OmniRT provides a unified CLI, Python API, validation flow, artifact export contract, and backend abstraction for image, video, and audio-driven avatar models, so different model families can share one runtime interface.
+# Welcome to OmniRT
 
-- Built around `GenerateRequest`, `GenerateResult`, and `RunReport`
-- One runtime surface across `cuda`, `ascend`, and `cpu-stub` backends
-- Supports local model directories, HF repo ids, and single-file weight imports
+<div class="omnirt-hero" markdown>
 
-<div class="intro-actions">
-  <a class="md-button md-button--primary" href="getting-started/">Getting Started</a>
-  <a class="md-button" href="cli/">CLI Docs</a>
-  <a class="md-button" href="python-api/">Python API</a>
-</div>
+<img src="assets/logos/omnirt-wordmark-light.svg" class="logo-light" alt="OmniRT" width="60%">
+<img src="assets/logos/omnirt-wordmark-dark.svg"  class="logo-dark"  alt="OmniRT" width="60%">
 
-## Current public baseline
+<p class="omnirt-tagline">Unified image · video · audio-avatar generation runtime for CUDA and Ascend.</p>
 
-| Item | Current status |
-|---|---|
-| Stable task surfaces | `text2image`, `image2image`, `text2video`, `image2video`, `audio2video` |
-| Hardware backends | `cuda`, `ascend` |
-| Core normalized objects | `GenerateRequest`, `GenerateResult`, `RunReport` |
-| Standard artifact export | `PNG`, `MP4` |
-
-The recommended path is to start with model discovery and request validation, then move into real CUDA or Ascend execution.
-
-## Why OmniRT
-
-<div class="grid cards compact-cards" markdown>
-
-- __Unified contract__
-
-  `GenerateRequest`, `GenerateResult`, and `RunReport` provide one consistent interface across model families.
-
-- __Backend-aware runtime__
-
-  The same request can be validated or executed on `cuda`, `ascend`, or `cpu-stub`, with backend differences absorbed by the runtime layer.
-
-- __Deployment friendly__
-
-  OmniRT is built around local model directories, offline snapshot preparation, error-path validation, and hardware smoke tests.
+<p class="omnirt-badges">
+  <a href="https://github.com/datascale-ai/omnirt"><img src="https://img.shields.io/github/stars/datascale-ai/omnirt?style=social" alt="GitHub stars"></a>
+  <a href="https://github.com/datascale-ai/omnirt/blob/main/LICENSE"><img src="https://img.shields.io/github/license/datascale-ai/omnirt" alt="License"></a>
+  <a href="https://pypi.org/project/omnirt/"><img src="https://img.shields.io/pypi/v/omnirt.svg" alt="PyPI"></a>
+</p>
 
 </div>
 
-## Public task surfaces today
+OmniRT is a unified runtime for **image**, **video**, and **audio-driven avatar** models. Every task face speaks the same `GenerateRequest` / `GenerateResult` / `RunReport` contract, shares the same CLI and Python API, runs the same request-validation flow, and plugs into a pluggable hardware backend.
 
-| Task | Description | Representative models | Output |
-|---|---|---|---|
-| `text2image` | prompt-driven image generation | `sd15`, `sdxl-base-1.0`, `flux2.dev`, `qwen-image` | PNG |
-| `image2image` | image-guided image generation | `sd15`, `sd21`, `sdxl-base-1.0`, `sdxl-refiner-1.0` | PNG |
-| `text2video` | prompt-driven video generation | `wan2.2-t2v-14b`, `cogvideox-2b`, `hunyuan-video` | MP4 |
-| `image2video` | first-frame-guided video generation | `svd`, `svd-xt`, `wan2.2-i2v-14b`, `ltx2-i2v` | MP4 |
-| `audio2video` | audio-driven avatar generation | `soulx-flashtalk-14b` | MP4 |
+Where you start depends on what you want to do:
+
+<div class="omnirt-paths" markdown>
+
+[<strong>🚀 Run a model</strong>
+The shortest path from install to a working `text2image` request.](getting_started/quickstart.md){ .md-button }
+
+[<strong>📘 Build an application</strong>
+CLI / Python API, presets, service schema, deployment guides.](user_guide/index.md){ .md-button }
+
+[<strong>🛠️ Contribute to OmniRT</strong>
+Architecture layers, model onboarding, ADRs, vLLM-Omni gap map.](developer_guide/index.md){ .md-button }
+
+</div>
+
+## OmniRT is **stable** with
+
+- **One request contract** — `GenerateRequest` / `GenerateResult` / `RunReport` cover every public task face
+- **Backend-neutral runtime** — the same request validates and runs on `cuda`, `ascend`, and `cpu-stub`
+- **Clear task surfaces** — `text2image`, `image2image`, `text2video`, `image2video`, `audio2video` are all public APIs
+- **Standardized artifacts** — images export as `PNG`, videos as `MP4`, every run ships a `RunReport`
+- **Self-describing models** — the registry exposes `min_vram_gb`, recommended presets, etc. via `omnirt models`
+- **Offline friendly** — local model directories, HF repo ids, and single-file weights are all first-class
+
+## OmniRT is **flexible** with
+
+- **Three entry points** — Python API, CLI (`omnirt generate / validate / models`), and FastAPI server
+- **16+ model families** — SD1.5 / SDXL / SVD / FLUX / FLUX2 / WAN / AnimateDiff / ChronoEdit / FlashTalk …
+- **China-region friendly** — ModelScope, HF-Mirror, offline snapshots and internal mirrors work out of the box
+- **Async dispatch** — `queue` / `worker` / `policies` for batched requests and multi-model queues
+- **Pluggable telemetry** — `middleware.telemetry` plugs into your observability stack
+- **Safe defaults** — `--dry-run` and `validate` catch misconfigurations before you burn GPU time
 
 ## Model map
 
-The authoritative list of registered models is generated from the live registry and lives at [_generated/models.md](_generated/models.md). Run `omnirt models` locally for the same view.
+OmniRT supports model families spanning:
 
-`soulx-flashtalk-14b` and `image2image` are public today. `inpaint`, `edit`, and `video2video` already have substantial runtime plumbing but are still evolving as public task surfaces.
+- **Image generation** — SD1.5, SD2.1, SDXL, SD3, FLUX, FLUX2, Qwen-Image
+- **Video generation** — SVD, SVD-XT, AnimateDiff-SDXL, WAN 2.2 T2V/I2V, CogVideoX, Hunyuan-Video, LTX2, ChronoEdit
+- **Avatar generation** — SoulX-FlashTalk
+- **Generalist image editing** — Generalist Image family
 
-## Stable boundary
+See the full registry at [Supported Models](user_guide/models/supported_models.md) or run `omnirt models` locally.
 
-<div class="split-panels">
-  <section>
-    <h3>Stable today</h3>
-    <ul>
-      <li>model discovery and request validation</li>
-      <li>unified CLI and Python API</li>
-      <li>formal public support for `image2image`</li>
-      <li>local model directory and offline deployment workflow</li>
-      <li>CUDA / Ascend backend abstraction</li>
-    </ul>
-  </section>
-  <section>
-    <h3>Still evolving</h3>
-    <ul>
-      <li>broader public polish for `inpaint`, `edit`, and `video2video`</li>
-      <li>stronger model self-discovery</li>
-      <li>more granular model parameter help</li>
-      <li>a broader cross-backend hardware validation matrix</li>
-    </ul>
-  </section>
-</div>
+## Public task surfaces today
 
-## Start here
+| Task | Inputs | Output | Representative models |
+|---|---|---|---|
+| `text2image` | prompt | PNG | `sd15`, `sdxl-base-1.0`, `flux2.dev`, `qwen-image` |
+| `image2image` | prompt + image | PNG | `sd15`, `sd21`, `sdxl-base-1.0`, `sdxl-refiner-1.0` |
+| `text2video` | prompt | MP4 | `wan2.2-t2v-14b`, `cogvideox-2b`, `hunyuan-video` |
+| `image2video` | prompt + first-frame | MP4 | `svd`, `svd-xt`, `wan2.2-i2v-14b`, `ltx2-i2v` |
+| `audio2video` | audio + portrait | MP4 | `soulx-flashtalk-14b` |
 
-<div class="grid cards compact-cards" markdown>
+!!! info "Stable boundary"
+    `inpaint`, `edit`, and `video2video` have runtime plumbing in place but are still evolving as public task surfaces. See [support status](user_guide/models/support_status.md).
 
-- __Getting Started__
+## Dig deeper
 
-  Go from installation and `omnirt models` to validation and a first generation request.
-
-  [Open guide](getting-started.md)
-
-- __CLI__
-
-  Learn the three core commands and the split between `inputs` and `config`.
-
-  [Read CLI docs](cli.md)
-
-- __Python API__
-
-  Use typed request helpers, `generate(...)`, `validate(...)`, and the `pipeline(...)` convenience wrapper.
-
-  [Read Python API docs](python-api.md)
-
-- __Architecture and deployment__
-
-  Review the runtime layers, service schema, China deployment workflow, and Ascend backend notes.
-
-  [Read architecture](architecture.md)
-
-- __Support status__
-
-  See which models are integrated, which have real hardware smoke coverage, and which high-priority targets are still pending.
-
-  [Open support status](support-status.md)
-
-- __Compare With vLLM-Omni__
-
-  Review the current gaps against `vLLM-Omni` across serving, distribution, throughput, and omni-stage orchestration, plus a practical roadmap.
-
-  [Open the gap roadmap](vllm-omni-gap-roadmap.md)
-
-</div>
+- [Roadmap](user_guide/models/roadmap.md) — what we plan to support next
+- [Architecture](developer_guide/architecture.md) — the seven runtime layers and the artifact contract
+- [Domestic deployment](user_guide/deployment/china_mirrors.md) — ModelScope / HF-Mirror / offline snapshots

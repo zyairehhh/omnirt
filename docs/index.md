@@ -1,124 +1,87 @@
-# OmniRT
+---
+hide:
+  - navigation
+  - toc
+---
 
-OmniRT 为图像、视频和音频驱动数字人模型提供统一的 CLI、Python API、请求校验、产物导出协议与后端抽象，让不同模型家族在同一套运行时契约里工作。
+# OmniRT 欢迎你
 
-- 统一覆盖 `GenerateRequest`、`GenerateResult`、`RunReport` 三个核心对象
-- 同一套运行时接口同时面向 `cuda`、`ascend` 与 `cpu-stub`
-- 兼容本地模型目录、HF repo id 与单文件权重导入
+<div class="omnirt-hero" markdown>
 
-<div class="intro-actions">
-  <a class="md-button md-button--primary" href="getting-started/">快速开始</a>
-  <a class="md-button" href="cli/">CLI 文档</a>
-  <a class="md-button" href="python-api/">Python API</a>
-</div>
+<img src="assets/logos/omnirt-wordmark-light.svg" class="logo-light" alt="OmniRT" width="60%">
+<img src="assets/logos/omnirt-wordmark-dark.svg"  class="logo-dark"  alt="OmniRT" width="60%">
 
-## 当前公开基线
+<p class="omnirt-tagline">面向 CUDA 与 Ascend 的统一图像 · 视频 · 音频数字人生成运行时。</p>
 
-| 项目 | 当前状态 |
-|---|---|
-| 稳定任务面 | `text2image`、`image2image`、`text2video`、`image2video`、`audio2video` |
-| 硬件后端 | `cuda`、`ascend` |
-| 统一核心对象 | `GenerateRequest`、`GenerateResult`、`RunReport` |
-| 标准产物导出 | `PNG`、`MP4` |
-
-默认推荐先做模型发现和请求校验，再接入真实 CUDA / Ascend 硬件执行。
-
-## 为什么是 OmniRT
-
-<div class="grid cards compact-cards" markdown>
-
-- __统一接口契约__
-
-  使用一致的 `GenerateRequest`、`GenerateResult`、`RunReport`，让不同模型家族共享同一套调用方式。
-
-- __后端感知运行时__
-
-  同一份请求可以在 `cuda`、`ascend` 或 `cpu-stub` 下进行校验与执行，后端差异被收敛到运行时层。
-
-- __部署友好__
-
-  默认支持本地模型目录、离线快照准备、错误路径验证和硬件 smoke tests，适合受限网络和混合算力环境。
+<p class="omnirt-badges">
+  <a href="https://github.com/datascale-ai/omnirt"><img src="https://img.shields.io/github/stars/datascale-ai/omnirt?style=social" alt="GitHub stars"></a>
+  <a href="https://github.com/datascale-ai/omnirt/blob/main/LICENSE"><img src="https://img.shields.io/github/license/datascale-ai/omnirt" alt="License"></a>
+  <a href="https://pypi.org/project/omnirt/"><img src="https://img.shields.io/pypi/v/omnirt.svg" alt="PyPI"></a>
+</p>
 
 </div>
 
-## 当前公开任务面
+OmniRT 为**图像**、**视频**和**音频驱动的数字人**模型提供一套统一运行时：相同的 `GenerateRequest` / `GenerateResult` / `RunReport` 契约、同一份 CLI 与 Python API、相同的请求校验流程、以及可替换的硬件后端抽象。
 
-| 任务面 | 说明 | 代表模型 | 输出 |
-|---|---|---|---|
-| `text2image` | 文本驱动图像生成 | `sd15`, `sdxl-base-1.0`, `flux2.dev`, `qwen-image` | PNG |
-| `image2image` | 图像引导图像生成 | `sd15`, `sd21`, `sdxl-base-1.0`, `sdxl-refiner-1.0` | PNG |
-| `text2video` | 文本驱动视频生成 | `wan2.2-t2v-14b`, `cogvideox-2b`, `hunyuan-video` | MP4 |
-| `image2video` | 首帧引导视频生成 | `svd`, `svd-xt`, `wan2.2-i2v-14b`, `ltx2-i2v` | MP4 |
-| `audio2video` | 音频驱动数字人 | `soulx-flashtalk-14b` | MP4 |
+项目的三类典型读者有不同的起点：
+
+<div class="omnirt-paths" markdown>
+
+[<strong>🚀 快速运行一个模型</strong>
+从安装到跑通第一条 `text2image` 请求的最短路径。](getting_started/quickstart.md){ .md-button }
+
+[<strong>📘 构建自己的应用</strong>
+深入 CLI / Python API、预设、服务协议与部署指南。](user_guide/index.md){ .md-button }
+
+[<strong>🛠️ 为 OmniRT 贡献代码</strong>
+架构分层、模型接入、ADR 决策记录与 vLLM-Omni 对比。](developer_guide/index.md){ .md-button }
+
+</div>
+
+## OmniRT **稳**在哪里
+
+- **统一请求契约**：`GenerateRequest` / `GenerateResult` / `RunReport` 三对象覆盖全部任务面
+- **跨后端运行时**：同一份请求在 `cuda` / `ascend` / `cpu-stub` 下都能校验与执行
+- **任务面清晰**：`text2image`、`image2image`、`text2video`、`image2video`、`audio2video` 均为公开 API
+- **产物标准化**：图像统一导出 `PNG`、视频统一导出 `MP4`、每次运行伴随一份 `RunReport`
+- **模型自描述**：registry 通过 `omnirt models` 实时披露 `min_vram_gb`、推荐 preset 等元信息
+- **离线友好**：本地模型目录、HF repo id、单文件权重三种加载路径等价支持
+
+## OmniRT **灵活**在哪里
+
+- **三种入口**：Python API、CLI (`omnirt generate / validate / models`) 与 FastAPI 服务
+- **16+ 模型家族**：SD1.5 / SDXL / SVD / FLUX / FLUX2 / WAN / AnimateDiff / ChronoEdit / FlashTalk …
+- **中国区友好**：开箱支持 ModelScope、HF-Mirror、离线快照、内网镜像
+- **异步派发**：`queue` / `worker` / `policies` 支持批量请求与多模型排队
+- **可插拔遥测**：`middleware.telemetry` 把运行指标接到你已有的观测栈
+- **安全默认值**：`--dry-run` 与 `validate` 让你在真机上跑之前就能查出错
 
 ## 模型版图
 
-Registry 的完整清单由自动生成页提供：[_generated/models.md](_generated/models.md)，也可本地运行 `omnirt models`。
+OmniRT 支持的模型家族包括：
 
-`soulx-flashtalk-14b` 和 `image2image` 均已公开；`inpaint`、`edit`、`video2video` 底层接线已部分铺设，但仍在向完整公开任务面演进。
+- **图像生成**（SD1.5、SD2.1、SDXL、SD3、FLUX、FLUX2、Qwen-Image）
+- **视频生成**（SVD、SVD-XT、AnimateDiff-SDXL、WAN 2.2 T2V/I2V、CogVideoX、Hunyuan-Video、LTX2、ChronoEdit）
+- **数字人**（SoulX-FlashTalk）
+- **通用图像编辑**（Generalist Image family）
 
-## 稳定边界
+完整清单请看 [模型清单](user_guide/models/supported_models.md)，或本地运行 `omnirt models`。
 
-<div class="split-panels">
-  <section>
-    <h3>已经稳定公开</h3>
-    <ul>
-      <li>模型发现与请求校验</li>
-      <li>统一 CLI 与 Python API</li>
-      <li>`image2image` 正式公开支持</li>
-      <li>本地模型目录与离线部署模式</li>
-      <li>CUDA / Ascend 后端抽象</li>
-    </ul>
-  </section>
-  <section>
-    <h3>仍在演进中的能力</h3>
-    <ul>
-      <li>`inpaint` / `edit` / `video2video` 的公开能力继续完善</li>
-      <li>更强的模型能力自发现</li>
-      <li>更细粒度的模型参数帮助</li>
-      <li>更完整的跨后端硬件验证矩阵</li>
-    </ul>
-  </section>
-</div>
+## 当前公开任务面
 
-## 上手路径
+| 任务面 | 输入 | 输出 | 代表模型 |
+|---|---|---|---|
+| `text2image` | prompt | PNG | `sd15`, `sdxl-base-1.0`, `flux2.dev`, `qwen-image` |
+| `image2image` | prompt + image | PNG | `sd15`, `sd21`, `sdxl-base-1.0`, `sdxl-refiner-1.0` |
+| `text2video` | prompt | MP4 | `wan2.2-t2v-14b`, `cogvideox-2b`, `hunyuan-video` |
+| `image2video` | prompt + first-frame | MP4 | `svd`, `svd-xt`, `wan2.2-i2v-14b`, `ltx2-i2v` |
+| `audio2video` | audio + portrait | MP4 | `soulx-flashtalk-14b` |
 
-<div class="grid cards compact-cards" markdown>
+!!! info "稳定边界"
+    `inpaint` / `edit` / `video2video` 的底层接线已部分铺设，但仍在向完整公开任务面演进，详见 [支持状态](user_guide/models/support_status.md)。
 
-- __快速开始__
+## 深入了解
 
-  从安装、`omnirt models`、`omnirt validate` 到第一条生成请求的最短路径。
-
-  [进入快速开始](getting-started.md)
-
-- __CLI 使用__
-
-  了解 `generate`、`validate`、`models` 三个核心命令，以及 `inputs` / `config` 的拆分规则。
-
-  [查看 CLI 文档](cli.md)
-
-- __Python 接入__
-
-  使用 typed request helpers、`generate(...)`、`validate(...)` 和 `pipeline(...)` 封装。
-
-  [查看 Python API](python-api.md)
-
-- __架构与部署__
-
-  深入查看运行时分层、服务协议、中国区部署和 Ascend 后端说明。
-
-  [阅读架构文档](architecture.md)
-
-- __支持状态__
-
-  查看哪些模型已经接入、哪些已经完成真机 smoke，以及当前仍待补齐的高优先级目标。
-
-  [查看支持状态](support-status.md)
-
-- __对标 vLLM-Omni__
-
-  查看当前项目和 `vLLM-Omni` 在服务化、分布式、吞吐与全模态编排上的差距，以及建议的补齐路线。
-
-  [查看能力缺口 roadmap](vllm-omni-gap-roadmap.md)
-
-</div>
+- [路线图](user_guide/models/roadmap.md) — 接下来要支持哪些模型
+- [架构说明](developer_guide/architecture.md) — 运行时七层分层与产物契约
+- [国内部署](user_guide/deployment/china_mirrors.md) — ModelScope / HF-Mirror / 离线快照完整流程

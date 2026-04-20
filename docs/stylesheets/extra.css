@@ -1,19 +1,117 @@
 :root {
-  --md-primary-fg-color: #37474f;
-  --md-accent-fg-color: #1565c0;
+  --omnirt-accent: #4f46e5;
+  --omnirt-accent-soft: rgba(79, 70, 229, 0.1);
+  --omnirt-border: rgba(55, 71, 79, 0.14);
+  --omnirt-hero-muted: rgba(55, 71, 79, 0.72);
 }
 
-.md-typeset .intro-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin: 1rem 0 1.4rem;
+[data-md-color-scheme="slate"] {
+  --omnirt-border: rgba(255, 255, 255, 0.12);
+  --omnirt-hero-muted: rgba(255, 255, 255, 0.72);
+  --omnirt-accent-soft: rgba(125, 116, 245, 0.18);
 }
 
 .md-typeset h1 {
   font-weight: 700;
   letter-spacing: -0.02em;
 }
+
+/* ---------------------------------------------------------- */
+/*  Light / dark logo switching (vLLM-style)                  */
+/* ---------------------------------------------------------- */
+
+[data-md-color-scheme="default"] .logo-dark,
+[data-md-color-scheme="slate"]   .logo-light {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------- */
+/*  Hero block on the landing page                            */
+/* ---------------------------------------------------------- */
+
+.md-typeset .omnirt-hero {
+  margin: 1.5rem auto 2.5rem;
+  text-align: center;
+}
+
+.md-typeset .omnirt-hero img {
+  max-width: 520px;
+  width: 60%;
+  height: auto;
+}
+
+.md-typeset .omnirt-hero p.omnirt-tagline {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--omnirt-hero-muted);
+  margin: 0.4rem 0 0.9rem;
+}
+
+.md-typeset .omnirt-hero .omnirt-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0.4rem;
+}
+
+.md-typeset .omnirt-hero .omnirt-badges img {
+  width: auto;
+  height: 20px;
+  vertical-align: middle;
+}
+
+.md-typeset .intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin: 1.1rem 0 1.6rem;
+}
+
+/* ---------------------------------------------------------- */
+/*  "Where to get started" path cards                         */
+/* ---------------------------------------------------------- */
+
+.md-typeset .omnirt-paths {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 1.2rem 0 2rem;
+}
+
+.md-typeset .omnirt-paths > a {
+  display: block;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--omnirt-border);
+  border-radius: 0.9rem;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+  background: var(--md-default-bg-color);
+}
+
+.md-typeset .omnirt-paths > a:hover {
+  border-color: var(--omnirt-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 0.6rem 1.2rem var(--omnirt-accent-soft);
+}
+
+.md-typeset .omnirt-paths strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+@media screen and (max-width: 60em) {
+  .md-typeset .omnirt-paths {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------------------------------------------------- */
+/*  Legacy card / split-panel styles (kept for existing docs) */
+/* ---------------------------------------------------------- */
 
 .md-typeset .compact-cards > ul > li,
 .md-typeset .compact-cards > ol > li {
@@ -22,15 +120,15 @@
 
 .md-typeset .grid.cards > ul > li,
 .md-typeset .grid.cards > ol > li {
-  border: 1px solid rgba(55, 71, 79, 0.12);
+  border: 1px solid var(--omnirt-border);
   border-radius: 0.8rem;
   box-shadow: 0 0.75rem 1.5rem rgba(30, 41, 59, 0.06);
 }
 
 .md-typeset .grid.cards > ul > li:hover,
 .md-typeset .grid.cards > ol > li:hover {
-  border-color: rgba(21, 101, 192, 0.28);
-  box-shadow: 0 1rem 2rem rgba(21, 101, 192, 0.12);
+  border-color: var(--omnirt-accent);
+  box-shadow: 0 1rem 2rem var(--omnirt-accent-soft);
 }
 
 .md-typeset .split-panels {
@@ -42,9 +140,13 @@
 
 .md-typeset .split-panels section {
   padding: 1rem 1.1rem;
-  border: 1px solid rgba(55, 71, 79, 0.12);
+  border: 1px solid var(--omnirt-border);
   border-radius: 0.9rem;
   background: linear-gradient(180deg, rgba(250, 251, 252, 1), rgba(245, 247, 249, 1));
+}
+
+[data-md-color-scheme="slate"] .md-typeset .split-panels section {
+  background: linear-gradient(180deg, rgba(40, 44, 52, 1), rgba(32, 36, 44, 1));
 }
 
 .md-typeset .split-panels h3 {
