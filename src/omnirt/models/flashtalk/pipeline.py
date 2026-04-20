@@ -51,6 +51,7 @@ class FlashTalkLaunchConfig:
     id="soulx-flashtalk-14b",
     task="audio2video",
     default_backend="ascend",
+    execution_mode="subprocess",
     resource_hint={"min_vram_gb": 64, "dtype": "bf16", "machine": "8.92.7.86", "accelerator": "Ascend 910B2"},
     capabilities=ModelCapabilities(
         required_inputs=("image", "audio"),

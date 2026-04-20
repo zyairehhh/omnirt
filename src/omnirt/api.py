@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from omnirt.backends import resolve_backend
+from omnirt.engine import get_default_engine
 from omnirt.core.registry import ModelSpec, get_model, list_models
 from omnirt.core.types import GenerateRequest, GenerateResult
 from omnirt.core.validation import ValidationResult, validate_request
@@ -18,6 +19,16 @@ RequestLike = Union[GenerateRequest, Dict[str, Any], str, Path]
 def _coerce_request(request: RequestLike) -> GenerateRequest:
     if isinstance(request, GenerateRequest):
         return request
+    if all(hasattr(request, field) for field in ("task", "model", "backend", "inputs", "config")):
+        adapters = getattr(request, "adapters", None)
+        return GenerateRequest(
+            task=request.task,
+            model=request.model,
+            backend=request.backend,
+            inputs=dict(request.inputs),
+            config=dict(request.config),
+            adapters=list(adapters) if adapters is not None else None,
+        )
     if isinstance(request, (str, Path)):
         return GenerateRequest.from_file(request)
     if isinstance(request, dict):
@@ -135,5 +146,4 @@ def generate(request: RequestLike, *, backend: Optional[str] = None) -> Generate
     spec = get_model(normalized_request.model, task=normalized_request.task)
     selected = backend if backend is not None else (req.backend or "auto")
     runtime = resolve_backend(selected)
-    pipeline = spec.pipeline_cls(runtime=runtime, model_spec=spec, adapters=normalized_request.adapters)
-    return pipeline.run(normalized_request)
+    return get_default_engine().run_sync(normalized_request, model_spec=spec, runtime=runtime)

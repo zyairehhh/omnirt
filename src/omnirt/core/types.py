@@ -125,11 +125,32 @@ class BackendTimelineEntry:
 
 
 @dataclass
+class StageEventRecord:
+    event: str
+    stage: str
+    timestamp_ms: int
+    data: Dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, payload: Dict[str, Any]) -> "StageEventRecord":
+        return cls(
+            event=str(payload["event"]),
+            stage=str(payload["stage"]),
+            timestamp_ms=int(payload["timestamp_ms"]),
+            data=dict(payload.get("data", {})),
+        )
+
+
+@dataclass
 class RunReport:
     run_id: str
     task: TaskName
     model: str
     backend: str
+    job_id: Optional[str] = None
+    enqueued_at_ms: Optional[int] = None
+    queue_wait_ms: Optional[float] = None
+    execution_mode: Optional[str] = None
     timings: Dict[str, float] = field(default_factory=dict)
     memory: Dict[str, float] = field(default_factory=dict)
     backend_timeline: List[BackendTimelineEntry] = field(default_factory=list)
@@ -137,7 +158,8 @@ class RunReport:
     artifacts: List[Artifact] = field(default_factory=list)
     error: Optional[str] = None
     latent_stats: Optional[Dict[str, float]] = None
-    schema_version: str = "0.1.0"
+    stream_events: List[StageEventRecord] = field(default_factory=list)
+    schema_version: str = "0.2.0"
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -149,6 +171,10 @@ class RunReport:
             task=payload["task"],
             model=payload["model"],
             backend=payload["backend"],
+            job_id=payload.get("job_id"),
+            enqueued_at_ms=payload.get("enqueued_at_ms"),
+            queue_wait_ms=payload.get("queue_wait_ms"),
+            execution_mode=payload.get("execution_mode"),
             timings=payload.get("timings", {}),
             memory=payload.get("memory", {}),
             backend_timeline=[BackendTimelineEntry.from_dict(item) for item in payload.get("backend_timeline", [])],
@@ -156,6 +182,7 @@ class RunReport:
             artifacts=[Artifact.from_dict(item) for item in payload.get("artifacts", [])],
             error=payload.get("error"),
             latent_stats=payload.get("latent_stats"),
+            stream_events=[StageEventRecord.from_dict(item) for item in payload.get("stream_events", [])],
             schema_version=str(payload.get("schema_version", "0.0.0")),
         )
 
@@ -177,6 +204,15 @@ class GenerateResult:
             outputs=[Artifact.from_dict(item) for item in payload.get("outputs", [])],
             metadata=RunReport.from_dict(payload["metadata"]),
         )
+
+
+def is_generate_result_like(value: Any) -> bool:
+    return bool(
+        value is not None
+        and hasattr(value, "outputs")
+        and hasattr(value, "metadata")
+        and callable(getattr(value, "to_dict", None))
+    )
 
 
 @dataclass
@@ -309,13 +345,16 @@ class EditRequest(GenerateRequest):
         self,
         *,
         model: str,
-        image: str,
+        image: Union[str, Sequence[str]],
         prompt: str,
         backend: BackendName = "auto",
         config: Optional[Dict[str, Any]] = None,
         adapters: Optional[List[AdapterRef]] = None,
     ) -> None:
-        inputs: Dict[str, Any] = {"image": image, "prompt": prompt}
+        if isinstance(image, (list, tuple)):
+            inputs: Dict[str, Any] = {"image": list(image), "prompt": prompt}
+        else:
+            inputs = {"image": image, "prompt": prompt}
         super().__init__(task="edit", model=model, backend=backend, inputs=inputs, config=dict(config or {}), adapters=adapters)
 
 

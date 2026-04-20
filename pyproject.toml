@@ -38,6 +38,12 @@ runtime = [
   "torch>=2.1",
   "transformers>=4.51",
 ]
+server = [
+  "fastapi>=0.110",
+  "pydantic>=2.5",
+  "sse-starlette>=2.0",
+  "uvicorn[standard]>=0.27",
+]
 
 [project.scripts]
 omnirt = "omnirt.cli.main:main"

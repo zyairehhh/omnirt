@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Optional, Tuple, Type
+from typing import Any, Callable, Dict, Literal, Optional, Tuple, Type
 
 from omnirt.core.types import ModelNotRegisteredError
 
@@ -31,6 +31,7 @@ class ModelSpec:
     default_backend: str = "auto"
     resource_hint: Dict[str, Any] = field(default_factory=dict)
     capabilities: ModelCapabilities = field(default_factory=ModelCapabilities)
+    execution_mode: Literal["legacy_call", "modular", "subprocess"] = "legacy_call"
 
 
 _MODEL_REGISTRY: Dict[Tuple[str, str], ModelSpec] = {}
@@ -57,6 +58,7 @@ def register_model(
     default_backend: str = "auto",
     resource_hint: Optional[Dict[str, Any]] = None,
     capabilities: Optional[ModelCapabilities] = None,
+    execution_mode: Literal["legacy_call", "modular", "subprocess"] = "legacy_call",
 ) -> Callable[[Type[Any]], Type[Any]]:
     def decorator(pipeline_cls: Type[Any]) -> Type[Any]:
         registrations = list(getattr(pipeline_cls, "_omnirt_model_registrations", []))
@@ -67,6 +69,7 @@ def register_model(
                 "default_backend": default_backend,
                 "resource_hint": dict(resource_hint or {}),
                 "capabilities": capabilities or ModelCapabilities(),
+                "execution_mode": execution_mode,
             }
         )
         pipeline_cls._omnirt_model_registrations = registrations
@@ -77,6 +80,7 @@ def register_model(
             default_backend=default_backend,
             resource_hint=dict(resource_hint or {}),
             capabilities=capabilities or ModelCapabilities(),
+            execution_mode=execution_mode,
         )
         return pipeline_cls
 

@@ -12,6 +12,7 @@ from omnirt.api import describe_model, generate, list_available_models, validate
 from omnirt.core.presets import available_presets
 from omnirt.core.registry import list_model_variants
 from omnirt.core.types import GenerateRequest, OmniRTError
+from omnirt.server import create_app
 
 PUBLIC_TASK_SURFACES = frozenset(
     {
@@ -115,6 +116,20 @@ def build_parser() -> argparse.ArgumentParser:
         default="text",
         help="Output format for the list view. Markdown is deterministic and suitable for docs generation.",
     )
+
+    serve_parser = subparsers.add_parser("serve", help="Run the OmniRT HTTP API server.")
+    serve_parser.add_argument("--host", default="127.0.0.1", help="Host interface to bind.")
+    serve_parser.add_argument("--port", type=int, default=8000, help="TCP port to bind.")
+    serve_parser.add_argument(
+        "--backend",
+        choices=["auto", "cuda", "ascend", "cpu-stub"],
+        default="auto",
+        help="Default backend for requests that omit backend.",
+    )
+    serve_parser.add_argument("--max-concurrency", type=int, default=1, help="Worker concurrency for queued jobs.")
+    serve_parser.add_argument("--pipeline-cache-size", type=int, default=4, help="Maximum cached executor instances.")
+    serve_parser.add_argument("--api-key-file", help="Optional newline-delimited API key file.")
+    serve_parser.add_argument("--model-aliases", help="Optional YAML/JSON alias mapping file.")
 
     return parser
 
@@ -376,6 +391,26 @@ def render_generate_summary(payload: dict) -> str:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "serve":
+        try:
+            import uvicorn
+        except ImportError as exc:
+            print(
+                "error: uvicorn is required for `omnirt serve`. Install `omnirt[server]` extras first.",
+                file=sys.stderr,
+            )
+            return 2
+
+        app = create_app(
+            default_backend=args.backend,
+            max_concurrency=args.max_concurrency,
+            pipeline_cache_size=args.pipeline_cache_size,
+            api_key_file=args.api_key_file,
+            model_aliases_path=args.model_aliases,
+        )
+        uvicorn.run(app, host=args.host, port=args.port)
+        return 0
 
     if args.command == "models":
         if args.model:
