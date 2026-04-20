@@ -247,11 +247,7 @@ class SVDPipeline(BasePipeline):
             return self._pipeline
 
         pipeline_cls = self._diffusers_pipeline_cls()
-        pipeline = pipeline_cls.from_pretrained(
-            source,
-            torch_dtype=torch_dtype,
-            use_safetensors=True,
-        )
+        pipeline = pipeline_cls.from_pretrained(source, **self._from_pretrained_kwargs(source, torch_dtype))
         scheduler_config = dict(config)
         scheduler_config.setdefault("scheduler", scheduler_name)
         if getattr(pipeline, "scheduler", None) is not None and hasattr(pipeline.scheduler, "config"):
@@ -263,6 +259,30 @@ class SVDPipeline(BasePipeline):
         self._pipeline = pipeline
         self._pipeline_key = cache_key
         return pipeline
+
+    def _from_pretrained_kwargs(self, source: str, torch_dtype: Any) -> Dict[str, Any]:
+        kwargs: Dict[str, Any] = {
+            "torch_dtype": torch_dtype,
+            "use_safetensors": True,
+        }
+        variant = self._detect_local_variant(source)
+        if variant is not None:
+            kwargs["variant"] = variant
+        return kwargs
+
+    def _detect_local_variant(self, source: str) -> Optional[str]:
+        root = Path(source)
+        if not root.is_dir():
+            return None
+
+        fp16_layout = {
+            "image_encoder": "model.fp16.safetensors",
+            "unet": "diffusion_pytorch_model.fp16.safetensors",
+            "vae": "diffusion_pytorch_model.fp16.safetensors",
+        }
+        if all((root / subdir / filename).is_file() for subdir, filename in fp16_layout.items()):
+            return "fp16"
+        return None
 
     def _wrap_pipeline_modules(self, pipeline: Any) -> None:
         for tag in ("image_encoder", "unet", "vae"):

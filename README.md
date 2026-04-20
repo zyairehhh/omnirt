@@ -13,6 +13,7 @@ Current public task surfaces:
 - `text2image`
 - `text2video`
 - `image2video`
+- `audio2video`
 
 Current public interface highlights:
 
@@ -30,6 +31,7 @@ Representative supported model families today:
 - Flux: `flux-dev`, `flux-schnell`, `flux2.dev`, `flux2-dev`
 - Generalist image: `glm-image`, `hunyuan-image-2.1`, `omnigen`, `qwen-image`, `sana-1.6b`, `ovis-image`, `hidream-i1`
 - Video: `svd`, `svd-xt`, `cogvideox-2b`, `cogvideox-5b`, `kandinsky5-t2v`, `kandinsky5-i2v`, `wan2.1-*`, `wan2.2-*`, `hunyuan-video`, `hunyuan-video-1.5-*`, `helios-*`, `sana-video`, `ltx-video`, `ltx2-i2v`
+- Talking avatar: `soulx-flashtalk-14b` on Ascend, backed by the external `SoulX-FlashTalk-Ascend` checkout
 
 Use the CLI to inspect the exact live registry:
 
@@ -124,6 +126,15 @@ omnirt generate \
   --backend cuda \
   --num-frames 81 \
   --fps 16
+
+omnirt generate \
+  --task audio2video \
+  --model soulx-flashtalk-14b \
+  --image speaker.png \
+  --audio voice.wav \
+  --prompt "A person is talking." \
+  --backend ascend \
+  --repo-path /home/<user>/SoulX-FlashTalk
 ```
 
 Available presets:
@@ -165,7 +176,7 @@ validation = pipe.validate(prompt="a lighthouse in fog", preset="fast")
 
 What is already public and stable enough to build against:
 
-- unified image/video generation requests
+- unified image, video, and audio-driven avatar generation requests
 - validation and model discovery
 - model-family registry metadata
 - code and CLI entrypoints

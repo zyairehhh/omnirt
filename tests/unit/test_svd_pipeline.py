@@ -46,11 +46,12 @@ class FakeSVDDiffusersPipeline:
         self.calls = []
 
     @classmethod
-    def from_pretrained(cls, source, torch_dtype=None, use_safetensors=True):
+    def from_pretrained(cls, source, torch_dtype=None, use_safetensors=True, variant=None):
         pipeline = cls()
         pipeline.source = source
         pipeline.dtype = torch_dtype
         pipeline.use_safetensors = use_safetensors
+        pipeline.variant = variant
         pipeline.scheduler = SimpleNamespace(config={"beta_start": 0.1})
         cls.created.append(pipeline)
         return pipeline
@@ -126,3 +127,34 @@ def test_svd_pipeline_raises_clear_error_without_diffusers(tmp_path) -> None:
 
     with pytest.raises(DependencyUnavailableError):
         pipeline.run(request)
+
+
+def test_svd_pipeline_detects_local_fp16_variant(tmp_path, monkeypatch) -> None:
+    image_path = tmp_path / "input.png"
+    Image.new("RGB", (48, 32), color="navy").save(image_path)
+
+    for directory, filename in (
+        ("image_encoder", "model.fp16.safetensors"),
+        ("unet", "diffusion_pytorch_model.fp16.safetensors"),
+        ("vae", "diffusion_pytorch_model.fp16.safetensors"),
+    ):
+        target_dir = tmp_path / directory
+        target_dir.mkdir(parents=True, exist_ok=True)
+        (target_dir / filename).write_bytes(b"fake")
+
+    monkeypatch.setattr(SVDPipeline, "_diffusers_pipeline_cls", lambda self: FakeSVDDiffusersPipeline)
+    monkeypatch.setattr("omnirt.models.svd.pipeline.build_scheduler", lambda config: {"name": "euler"})
+
+    request = GenerateRequest(
+        task="image2video",
+        model="svd-xt",
+        backend="cuda",
+        inputs={"image": str(image_path), "num_frames": 2, "fps": 6},
+        config={"output_dir": str(tmp_path), "model_path": str(tmp_path)},
+    )
+    pipeline = SVDPipeline(runtime=FakeVideoRuntime(), model_spec=build_model_spec())
+
+    pipeline.run(request)
+
+    created = FakeSVDDiffusersPipeline.created[-1]
+    assert created.variant == "fp16"
