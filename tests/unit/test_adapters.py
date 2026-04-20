@@ -45,3 +45,20 @@ def test_adapter_manager_rejects_pipeline_without_lora_support(tmp_path) -> None
         assert "LoRA" in str(exc)
     else:
         raise AssertionError("Expected DependencyUnavailableError")
+
+
+def test_adapter_manager_accepts_hf_single_file_ref(monkeypatch, tmp_path) -> None:
+    cached = tmp_path / "remote-style.safetensors"
+    cached.write_bytes(b"fake")
+    monkeypatch.setattr(
+        "omnirt.core.weight_loader.WeightLoader.validate_path",
+        lambda path: cached,
+    )
+
+    manager = AdapterManager()
+    manager.load_all([AdapterRef(kind="lora", path="hf://acme/demo/weights/style.safetensors", scale=1.0)])
+    pipeline = FakeLoraPipeline()
+
+    manager.apply_to_pipeline(pipeline)
+
+    assert pipeline.loras == [str(cached)]

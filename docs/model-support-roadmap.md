@@ -1,48 +1,63 @@
-# Model Support Roadmap
+# 模型支持路线图
 
-This document defines the recommended model support roadmap for `omnirt` based on the current implemented baseline and the next support waves that should follow.
+本文档基于当前已经实现的基线能力，定义 `omnirt` 后续推荐推进的模型支持路线图。
 
-It is intentionally aligned with the current open-source ecosystem, especially:
+路线图有意与当前开源生态保持对齐，尤其参考：
 
-- Diffusers official pipeline coverage
-- ComfyUI native workflow-template coverage
-- InvokeAI's practical model support focus
+- Diffusers 官方 pipeline 覆盖面
+- ComfyUI 原生 workflow / template 覆盖面
+- InvokeAI 在生产实用性上的模型支持重点
 
-Status note:
+状态说明：
 
-- Last reviewed: 2026-04-20
-- This is a recommended OmniRT roadmap, not an upstream framework commitment
+- 最近审阅时间：2026-04-20
+- 这是一份 OmniRT 内部推荐路线图，不代表上游框架承诺
 
-Current implementation note:
+当前实现备注：
 
-- OmniRT currently ships `sd15`, `sd21`, `sdxl-base-1.0`, `sdxl-turbo`, `sd3-medium`, `sd3.5-large`, `sd3.5-large-turbo`, `svd`, `svd-xt`, `flux-dev`, `flux-schnell`, `flux2.dev` / `flux2-dev`, `glm-image`, `hunyuan-image-2.1`, `omnigen`, `qwen-image`, `sana-1.6b`, `ovis-image`, `hidream-i1`, `cogvideox-2b`, `cogvideox-5b`, `kandinsky5-t2v`, `kandinsky5-i2v`, `wan2.1-t2v-14b`, `wan2.1-i2v-14b`, `wan2.2-t2v-14b`, `wan2.2-i2v-14b`, `hunyuan-video`, `hunyuan-video-1.5-t2v`, `hunyuan-video-1.5-i2v`, `helios-t2v`, `helios-i2v`, `sana-video`, `ltx-video`, `ltx2-i2v`, and `soulx-flashtalk-14b`
-- This means the codebase is already ahead of the older roadmap on Flux and Wan family versions
-- The roadmap below treats those newer Flux2 and Wan2.2 integrations as real baseline support, while keeping the still-important `flux-dev`, `flux-schnell`, and `wan2.1-*` compatibility targets visible where they remain strategically useful
-- For multi-task families, the current registry uses task-specific suffixes where needed, for example `helios-t2v` / `helios-i2v` and `hunyuan-video-1.5-t2v` / `hunyuan-video-1.5-i2v`
+- OmniRT currently ships `sd15`, `sd21`, `sdxl-base-1.0`, `sdxl-refiner-1.0`, `sdxl-turbo`, `animate-diff-sdxl`, `sd3-medium`, `sd3.5-large`, `sd3.5-large-turbo`, `kolors`, `svd`, `svd-xt`, `flux-dev`, `flux-depth`, `flux-schnell`, `flux-canny`, `flux-fill`, `flux-kontext`, `flux2.dev` / `flux2-dev`, `chronoedit`, `glm-image`, `hunyuan-image-2.1`, `omnigen`, `qwen-image`, `qwen-image-edit`, `qwen-image-edit-plus`, `qwen-image-layered`, `sana-1.6b`, `ovis-image`, `hidream-i1`, `pixart-sigma`, `bria-3.2`, `lumina-t2x`, `mochi`, `cogvideox-2b`, `cogvideox-5b`, `kandinsky5-t2v`, `kandinsky5-i2v`, `wan2.1-t2v-14b`, `wan2.1-i2v-14b`, `wan2.2-t2v-14b`, `wan2.2-i2v-14b`, `hunyuan-video`, `hunyuan-video-1.5-t2v`, `hunyuan-video-1.5-i2v`, `helios-t2v`, `helios-i2v`, `sana-video`, `ltx-video`, `ltx2-i2v`, `skyreels-v2`, and `soulx-flashtalk-14b`
+- 这意味着当前代码库在 Flux 和 Wan 家族版本上已经超出了更早期的路线图
+- 下文会把较新的 Flux2 和 Wan2.2 集成视为真实基线支持，同时继续保留 `flux-dev`、`flux-schnell` 和 `wan2.1-*` 这些仍有战略价值的兼容目标
+- 对于多任务家族，当前 registry 会在必要时使用任务后缀，例如 `helios-t2v` / `helios-i2v` 和 `hunyuan-video-1.5-t2v` / `hunyuan-video-1.5-i2v`
 
-## Current snapshot
+## 当前快照
 
-Implemented today:
+当前已实现：
 
 - `sd15`
 - `sd21`
 - `sdxl-base-1.0`
+- `sdxl-refiner-1.0`
 - `sdxl-turbo`
+- `animate-diff-sdxl`
 - `sd3-medium`
 - `sd3.5-large`
 - `sd3.5-large-turbo`
+- `kolors`
 - `svd`
 - `svd-xt`
 - `flux-dev`
+- `flux-depth`
 - `flux-schnell`
+- `flux-canny`
+- `flux-fill`
+- `flux-kontext`
 - `flux2.dev` / `flux2-dev`
+- `chronoedit`
 - `glm-image`
 - `hunyuan-image-2.1`
 - `omnigen`
 - `qwen-image`
+- `qwen-image-edit`
+- `qwen-image-edit-plus`
+- `qwen-image-layered`
 - `sana-1.6b`
 - `ovis-image`
 - `hidream-i1`
+- `pixart-sigma`
+- `bria-3.2`
+- `lumina-t2x`
+- `mochi`
 - `cogvideox-2b`
 - `cogvideox-5b`
 - `kandinsky5-t2v`
@@ -59,31 +74,26 @@ Implemented today:
 - `sana-video`
 - `ltx-video`
 - `ltx2-i2v`
+- `skyreels-v2`
 - `soulx-flashtalk-14b`
 
-Highest-priority unsupported targets:
+当前优先级最高、但尚未支持的目标：
 
-- `sdxl-refiner-1.0`
-- `qwen-image-edit`
-- `flux-fill`
-- `qwen-image-edit-plus`
-- `flux-kontext`
-- `chronoedit`
 - `helios`
 - `hunyuan-video-1.5`
 
-## Planning principles
+## 规划原则
 
-1. Prefer models with first-class Diffusers support.
-2. Favor models that also appear in mainstream production-facing tools such as ComfyUI or InvokeAI.
-3. Keep `text2image` and `image2video` as the primary compatibility targets.
-   Audio-driven avatar generation is now also a first-class OmniRT task surface via `audio2video`.
-4. Prioritize open-weight models and safe formats such as `safetensors`.
-5. Avoid investing early in deprecated upstream pipelines.
+1. 优先支持拥有一等 Diffusers 支持的模型。
+2. 优先考虑同时出现在 ComfyUI、InvokeAI 等主流生产工具中的模型。
+3. 继续把 `text2image` 和 `image2video` 作为主兼容目标。
+   通过 `audio2video`，音频驱动数字人也已经成为一等任务面。
+4. 优先支持开放权重模型和 `safetensors` 这类安全格式。
+5. 避免过早投入到已经被上游淘汰的 pipeline 上。
 
-## Registry key convention
+## Registry key 约定
 
-Use lowercase kebab-case IDs with the following pattern:
+统一使用小写 kebab-case，模式如下：
 
 `<family>-<variant>[-<size>|-<mode>|-<task-suffix>]`
 
@@ -106,30 +116,30 @@ Examples:
 - `hunyuan-video-1.5`
 - `ltx2-i2v`
 
-Naming rules:
+命名规则：
 
-1. Prefer the public model-family name used by the original project.
-2. Preserve meaningful upstream version markers such as `2.1`, `3.5`, or `1.5`.
-3. Use task suffixes only when the same family has multiple task-specific pipelines.
-4. Avoid backend names in the registry key. Backend remains a runtime choice, not a model identity.
-5. Avoid vendor prefixes when the family name is already unambiguous.
+1. 优先使用原项目对外公开的模型家族名称。
+2. 保留有意义的上游版本标识，例如 `2.1`、`3.5`、`1.5`。
+3. 只有当同一家族存在多个任务专属 pipeline 时，才使用任务后缀。
+4. 不要把后端名称放进 registry key。后端是运行时选择，不是模型身份。
+5. 当家族名称已经足够明确时，避免加厂商前缀。
 
-## Support tiers
+## 支持层级
 
-- `P0`: must-have baseline
-- `P1`: next major compatibility targets
-- `P2`: high-value extensions
-- `P3`: watchlist / opportunistic additions
+- `P0`：必须完成的基线能力
+- `P1`：下一阶段主要兼容目标
+- `P2`：高价值扩展能力
+- `P3`：观察名单 / 机会型补充
 
-## Phase roadmap
+## 分阶段路线图
 
-### Phase A: Finish the baseline
+### 阶段 A：补完基线
 
-Goal:
+目标：
 
-- complete true end-to-end CUDA and Ascend validation for the current implemented baseline
+- 为当前已实现的基线能力补完真实的 CUDA / Ascend 端到端验证
 
-Models:
+模型：
 
 - `sdxl-base-1.0`
 - `svd`
@@ -138,13 +148,13 @@ Models:
 - `wan2.2-t2v-14b`
 - `wan2.2-i2v-14b`
 
-### Phase B: Mainstream image compatibility
+### 阶段 B：主流图像兼容性
 
-Goal:
+目标：
 
-- cover the image models most commonly encountered across Diffusers, ComfyUI, and InvokeAI workflows, including compatibility with older but still widely-used Flux and Stable Diffusion families
+- 覆盖 Diffusers、ComfyUI、InvokeAI 工作流中最常见的图像模型，同时兼顾仍被广泛使用的旧版 Flux 和 Stable Diffusion 家族
 
-Models:
+模型：
 
 - `sd15`
 - `sd21`
@@ -166,13 +176,13 @@ Models:
 - `ovis-image`
 - `hidream-i1`
 
-### Phase C: Video-first expansion
+### 阶段 C：视频优先扩张
 
-Goal:
+目标：
 
-- make OmniRT genuinely competitive as an open image and video runtime rather than only an SDXL + SVD + Wan wrapper
+- 让 OmniRT 真正成为具备竞争力的开源图像 / 视频运行时，而不只是一个 SDXL + SVD + Wan 包装层
 
-Models:
+模型：
 
 - `cogvideox-2b`
 - `cogvideox-5b`
@@ -189,13 +199,13 @@ Models:
 - `ltx-video`
 - `ltx2-i2v`
 
-### Phase D: Controlled generation and editing
+### 阶段 D：可控生成与编辑
 
-Goal:
+目标：
 
-- add the higher-value editing and controlled-generation surfaces people expect from mature runtimes
+- 补齐成熟运行时普遍应具备的高价值编辑与可控生成能力
 
-Models:
+模型：
 
 - `flux-depth`
 - `flux-canny`
@@ -205,59 +215,59 @@ Models:
 - `qwen-image-layered`
 - `animate-diff-sdxl`
 
-## Detailed target list
+## 详细目标列表
 
-| Priority | Registry key | Task | CUDA | Ascend | Notes |
+| 优先级 | Registry key | 任务 | CUDA | Ascend | 说明 |
 |---|---|---|---|---|---|
-| P0 | `sdxl-base-1.0` | text2image | required | required | current baseline |
-| P0 | `svd` | image2video | required | required | add the 14-frame variant |
-| P0 | `svd-xt` | image2video | required | required | current video baseline |
-| P0 | `flux2.dev` | text2image | required | recommended | already implemented; newer Flux generation path |
-| P0 | `wan2.2-t2v-14b` | text2video | required | watch | already implemented; strong current open video target |
-| P0 | `wan2.2-i2v-14b` | image2video | required | watch | already implemented; first-frame-guided video path |
-| P1 | `sd15` | text2image, image2image, inpaint | required | recommended | widest legacy ecosystem reach |
-| P1 | `sd21` | text2image, depth2image | recommended | optional | useful for older SD2 workflows |
-| P1 | `sdxl-refiner-1.0` | image refinement | required | recommended | completes two-stage SDXL |
-| P1 | `sdxl-turbo` | text2image | required | optional | low-latency generation |
-| P1 | `sd3-medium` | text2image | required | watch | practical SD3 entry point |
-| P1 | `sd3.5-large` | text2image | required | watch | strong modern SD family target |
-| P1 | `sd3.5-large-turbo` | text2image | required | watch | speed-oriented SD3.5 path |
-| P1 | `flux-dev` | text2image | required | recommended | major ecosystem priority |
-| P1 | `flux-schnell` | text2image | required | recommended | low-step Flux variant |
-| P1 | `flux-fill` | inpaint, outpaint | required | optional | high-value editing path |
-| P1 | `glm-image` | text2image, image2image | required | watch | strong text rendering and instruction-following image generation |
-| P1 | `hunyuan-image-2.1` | text2image | required | recommended | strong Chinese-language image generation target |
-| P1 | `omnigen` | multimodal-to-image | required | watch | unified instruction, editing, and conditional image generation path |
-| P1 | `qwen-image` | text2image | required | recommended | especially valuable for multilingual text rendering |
-| P1 | `qwen-image-edit` | image editing | required | recommended | editing path for Qwen image family |
-| P1 | `sana-1.6b` | text2image | recommended | optional | efficient high-res image generation |
-| P1 | `ovis-image` | text2image | recommended | watch | compact model with strong text rendering focus |
-| P1 | `hidream-i1` | text2image | watch | watch | newer modern image family worth tracking |
-| P1 | `cogvideox-2b` | text2video | required | watch | lower barrier video entry point |
-| P1 | `cogvideox-5b` | text2video | required | watch | stronger open video baseline |
-| P1 | `kandinsky5-t2v` | text2video | required | watch | high-quality open video family with lite and pro variants |
-| P1 | `kandinsky5-i2v` | image2video | required | watch | paired image-to-video path in the same family |
-| P1 | `wan2.1-t2v-14b` | text2video | required | watch | one of the most important current video targets |
-| P1 | `wan2.1-i2v-14b` | image2video | required | watch | especially aligned with OmniRT's video focus |
-| P1 | `hunyuan-video` | text2video | required | watch | strong open video family |
-| P1 | `hunyuan-video-1.5` | text2video, image2video | required | watch | newer family version worth tracking |
-| P1 | `helios` | text2video, image2video, video2video | required | watch | long-video and real-time generation candidate |
-| P1 | `sana-video` | text2video | recommended | watch | efficient small-model video option |
-| P1 | `ltx-video` | text2video | required | watch | attractive long-video and efficient inference path |
-| P1 | `ltx2-i2v` | image2video | required | watch | strong fit for OmniRT's video roadmap |
-| P2 | `flux-depth` | controlled text2image | required | optional | structure conditioning |
-| P2 | `flux-canny` | controlled text2image | required | optional | edge-conditioned generation |
-| P2 | `flux-kontext` | image editing | required | watch | next-generation Flux editing path |
-| P2 | `chronoedit` | physically consistent image editing | recommended | watch | video-backed image editing with temporal reasoning |
-| P2 | `qwen-image-edit-plus` | image editing | required | watch | more advanced Qwen editing |
-| P2 | `qwen-image-layered` | layered image editing | recommended | watch | useful for compositing workflows |
-| P2 | `kolors` | text2image | recommended | optional | optional multilingual image model add-on |
-| P2 | `pixart-sigma` | text2image | recommended | optional | additional DiT image family |
-| P2 | `animate-diff-sdxl` | text2video | recommended | watch | SDXL-adjacent motion support |
-| P3 | `bria-3.2` | text2image | watch | watch | monitor enterprise/commercial demand |
-| P3 | `lumina-t2x` | text2image | watch | watch | keep under observation |
-| P3 | `mochi` | text2video | watch | watch | monitor maturity and demand |
-| P3 | `skyreels-v2` | video | watch | watch | monitor maturity and demand |
+| P0 | `sdxl-base-1.0` | text2image | 必须 | 必须 | 当前基线 |
+| P0 | `svd` | image2video | 必须 | 必须 | 需要补上 14 帧变体 |
+| P0 | `svd-xt` | image2video | 必须 | 必须 | 当前视频基线 |
+| P0 | `flux2.dev` | text2image | 必须 | 推荐 | 已实现；属于较新的 Flux 生成路径 |
+| P0 | `wan2.2-t2v-14b` | text2video | 必须 | 观察 | 已实现；当前很强的开源视频目标 |
+| P0 | `wan2.2-i2v-14b` | image2video | 必须 | 观察 | 已实现；首帧引导视频路径 |
+| P1 | `sd15` | text2image, image2image, inpaint | 必须 | 推荐 | 传统生态覆盖面最广 |
+| P1 | `sd21` | text2image, depth2image | 推荐 | 可选 | 对旧版 SD2 工作流仍有价值 |
+| P1 | `sdxl-refiner-1.0` | 图像精修 | 必须 | 推荐 | 补齐两阶段 SDXL |
+| P1 | `sdxl-turbo` | text2image | 必须 | 可选 | 低延迟生成 |
+| P1 | `sd3-medium` | text2image | 必须 | 观察 | 实用的 SD3 入门模型 |
+| P1 | `sd3.5-large` | text2image | 必须 | 观察 | 现代 SD 家族的重要目标 |
+| P1 | `sd3.5-large-turbo` | text2image | 必须 | 观察 | 偏速度导向的 SD3.5 路径 |
+| P1 | `flux-dev` | text2image | 必须 | 推荐 | 生态中优先级很高 |
+| P1 | `flux-schnell` | text2image | 必须 | 推荐 | 低步数 Flux 变体 |
+| P1 | `flux-fill` | inpaint, outpaint | 必须 | 可选 | 高价值编辑路径 |
+| P1 | `glm-image` | text2image, image2image | 必须 | 观察 | 文本渲染和指令跟随都很强 |
+| P1 | `hunyuan-image-2.1` | text2image | 必须 | 推荐 | 中文图像生成的重要目标 |
+| P1 | `omnigen` | multimodal-to-image | 必须 | 观察 | 统一了指令、编辑和条件图像生成 |
+| P1 | `qwen-image` | text2image | 必须 | 推荐 | 多语言文本渲染尤其有价值 |
+| P1 | `qwen-image-edit` | 图像编辑 | 必须 | 推荐 | Qwen 图像家族的编辑路径 |
+| P1 | `sana-1.6b` | text2image | 推荐 | 可选 | 高效的高分辨率图像生成 |
+| P1 | `ovis-image` | text2image | 推荐 | 观察 | 体积紧凑，文本渲染能力强 |
+| P1 | `hidream-i1` | text2image | 观察 | 观察 | 值得跟踪的新一代图像家族 |
+| P1 | `cogvideox-2b` | text2video | 必须 | 观察 | 视频能力门槛较低的入口 |
+| P1 | `cogvideox-5b` | text2video | 必须 | 观察 | 更强的开源视频基线 |
+| P1 | `kandinsky5-t2v` | text2video | 必须 | 观察 | 高质量开源视频家族 |
+| P1 | `kandinsky5-i2v` | image2video | 必须 | 观察 | 同一家族的图生视频路径 |
+| P1 | `wan2.1-t2v-14b` | text2video | 必须 | 观察 | 当前最重要的视频目标之一 |
+| P1 | `wan2.1-i2v-14b` | image2video | 必须 | 观察 | 与 OmniRT 视频方向高度一致 |
+| P1 | `hunyuan-video` | text2video | 必须 | 观察 | 很强的开源视频家族 |
+| P1 | `hunyuan-video-1.5` | text2video, image2video | 必须 | 观察 | 值得持续跟踪的新版本 |
+| P1 | `helios` | text2video, image2video, video2video | 必须 | 观察 | 长视频与实时生成候选 |
+| P1 | `sana-video` | text2video | 推荐 | 观察 | 小模型高效率视频方案 |
+| P1 | `ltx-video` | text2video | 必须 | 观察 | 长视频与高效推理都很有吸引力 |
+| P1 | `ltx2-i2v` | image2video | 必须 | 观察 | 与视频路线图高度契合 |
+| P2 | `flux-depth` | 可控 text2image | 必须 | 可选 | 结构条件控制 |
+| P2 | `flux-canny` | 可控 text2image | 必须 | 可选 | 边缘条件控制 |
+| P2 | `flux-kontext` | 图像编辑 | 必须 | 观察 | 新一代 Flux 编辑路径 |
+| P2 | `chronoedit` | 物理一致性图像编辑 | 推荐 | 观察 | 带时间推理的视频反哺图像编辑 |
+| P2 | `qwen-image-edit-plus` | 图像编辑 | 必须 | 观察 | 更高级的 Qwen 编辑能力 |
+| P2 | `qwen-image-layered` | 分层图像编辑 | 推荐 | 观察 | 适合 compositing 工作流 |
+| P2 | `kolors` | text2image | 推荐 | 可选 | 可选的多语言图像模型补充 |
+| P2 | `pixart-sigma` | text2image | 推荐 | 可选 | 额外的 DiT 图像家族 |
+| P2 | `animate-diff-sdxl` | text2video | 推荐 | 观察 | 与 SDXL 相邻的动态能力 |
+| P3 | `bria-3.2` | text2image | 观察 | 观察 | 关注企业/商业需求 |
+| P3 | `lumina-t2x` | text2image | 观察 | 观察 | 持续观察 |
+| P3 | `mochi` | text2video | 观察 | 观察 | 关注成熟度和需求 |
+| P3 | `skyreels-v2` | video | 观察 | 观察 | 关注成熟度和需求 |
 
 ## Capability roadmap by model family
 

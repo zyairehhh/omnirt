@@ -1,64 +1,108 @@
 # OmniRT
 
-[中文](./README.zh-CN.md)
+[中文](./README.zh-CN.md) | [Documentation](https://datascale-ai.github.io/omnirt/) | [English Docs](https://datascale-ai.github.io/omnirt/en/)
 
-Open image and video generation runtime with CUDA and Ascend backends.
+Open runtime for image, video, and audio-driven avatar generation across CUDA and Ascend backends.
 
-## Overview
+OmniRT gives model families a unified CLI, Python API, validation flow, artifact export contract, and backend abstraction, so you can move across model families without relearning the entire runtime surface.
 
-OmniRT is a Diffusers-backed runtime layer that gives image and video models a unified CLI, Python API, validation flow, artifact export contract, and backend abstraction.
+## Highlights
 
-Current public task surfaces:
-
-- `text2image`
-- `text2video`
-- `image2video`
-- `audio2video`
-
-Current public interface highlights:
-
-- `omnirt generate`, `omnirt validate`, `omnirt models`
-- typed request helpers and a convenience `pipeline(...)` API in Python
-- normalized `GenerateRequest` / `GenerateResult` / `RunReport`
+- Unified request/result contract built around `GenerateRequest`, `GenerateResult`, and `RunReport`
+- Public CLI centered on `omnirt generate`, `omnirt validate`, and `omnirt models`
+- Python helpers via `requests.*` and a convenience `pipeline(...)` wrapper
+- CUDA, Ascend, and `cpu-stub` backend modes
 - PNG and MP4 artifact export
-- model registry metadata, presets, validation, and backend selection
+- Model sources can use local directories or Hugging Face repo ids
+- LoRA safetensors can be loaded from local files or Hugging Face single-file refs
+- Deployment-friendly workflow for local model directories and restricted networks
 
-## Supported Models
+## Public Task Surfaces
 
-Representative supported model families today:
+| Task | Description | Typical outputs |
+|---|---|---|
+| `text2image` | prompt-driven image generation | PNG |
+| `image2image` | image-guided image generation | PNG |
+| `text2video` | prompt-driven video generation | MP4 |
+| `image2video` | first-frame-guided video generation | MP4 |
+| `audio2video` | audio-driven talking avatar generation | MP4 |
 
-- Stable Diffusion: `sd15`, `sd21`, `sdxl-base-1.0`, `sdxl-turbo`, `sd3-medium`, `sd3.5-large`, `sd3.5-large-turbo`
-- Flux: `flux-dev`, `flux-schnell`, `flux2.dev`, `flux2-dev`
-- Generalist image: `glm-image`, `hunyuan-image-2.1`, `omnigen`, `qwen-image`, `sana-1.6b`, `ovis-image`, `hidream-i1`
-- Video: `svd`, `svd-xt`, `cogvideox-2b`, `cogvideox-5b`, `kandinsky5-t2v`, `kandinsky5-i2v`, `wan2.1-*`, `wan2.2-*`, `hunyuan-video`, `hunyuan-video-1.5-*`, `helios-*`, `sana-video`, `ltx-video`, `ltx2-i2v`
-- Talking avatar: `soulx-flashtalk-14b` on Ascend, backed by the external `SoulX-FlashTalk-Ascend` checkout
-
-Use the CLI to inspect the exact live registry:
+The CLI is the fastest way to inspect the exact live registry:
 
 ```bash
 omnirt models
 omnirt models flux2.dev
 ```
 
-## Quickstart
+## Supported Model Families
+
+Representative families currently wired into the registry:
+
+- Stable Diffusion: `sd15`, `sd21`, `sdxl-base-1.0`, `sdxl-refiner-1.0`, `sdxl-turbo`, `sd3-medium`, `sd3.5-large`, `sd3.5-large-turbo`
+- Flux: `flux-dev`, `flux-depth`, `flux-schnell`, `flux-canny`, `flux-fill`, `flux-kontext`, `flux2.dev`, `flux2-dev`
+- Generalist image: `chronoedit`, `kolors`, `glm-image`, `hunyuan-image-2.1`, `omnigen`, `qwen-image`, `qwen-image-edit`, `qwen-image-edit-plus`, `qwen-image-layered`, `sana-1.6b`, `ovis-image`, `hidream-i1`, `pixart-sigma`, `bria-3.2`, `lumina-t2x`
+- Video: `svd`, `svd-xt`, `animate-diff-sdxl`, `mochi`, `cogvideox-2b`, `cogvideox-5b`, `kandinsky5-t2v`, `kandinsky5-i2v`, `wan2.1-*`, `wan2.2-*`, `hunyuan-video`, `hunyuan-video-1.5-*`, `helios-*`, `sana-video`, `ltx-video`, `ltx2-i2v`, `skyreels-v2`
+- Talking avatar: `soulx-flashtalk-14b` on Ascend
+
+Current public interfaces are stable enough to build against for generation, validation, model discovery, and artifact export. `image2image` is now a documented public task surface, with `sdxl-base-1.0`, `sdxl-refiner-1.0`, `sd15`, and `sd21` as the recommended starting points. `inpaint`, `edit`, and `video2video` are still evolving.
+
+## Quick Start
+
+Install the package for local development:
 
 ```bash
-python3 -m pip install -e .[dev]
-python3 -m omnirt --help
+python -m pip install -e '.[dev]'
+python -m omnirt --help
 pytest
 ```
 
-For runtime model execution support, install runtime extras too:
+Install runtime dependencies if you want to execute real model pipelines:
 
 ```bash
-python3 -m pip install -e '.[runtime,dev]'
+python -m pip install -e '.[runtime,dev]'
 ```
 
-Real CUDA and Ascend end-to-end generation still requires the corresponding hardware, runtime libraries, and model weights.
+Install docs dependencies if you want to preview or work on the documentation site:
 
-## CLI
+```bash
+python -m pip install -e '.[docs]'
+```
 
-YAML request:
+## First Request
+
+Validate a request before execution:
+
+```bash
+omnirt validate \
+  --task text2image \
+  --model qwen-image \
+  --prompt "a poster with a bold title" \
+  --backend cpu-stub
+```
+
+Run a simple generation:
+
+```bash
+omnirt generate \
+  --task text2image \
+  --model sd15 \
+  --prompt "a lighthouse in fog" \
+  --backend cuda \
+  --preset fast
+```
+
+Run a minimal `image2image` request:
+
+```bash
+omnirt generate \
+  --task image2image \
+  --model sdxl-base-1.0 \
+  --image input.png \
+  --prompt "cinematic concept art" \
+  --backend cuda
+```
+
+YAML request example:
 
 ```yaml
 task: text2image
@@ -72,84 +116,28 @@ config:
   height: 1024
 ```
 
-Run it:
+Run it with:
 
 ```bash
 omnirt generate --config request.yaml --json
 ```
 
-Direct flags:
+`model_path` can point to either:
 
-```bash
-omnirt generate \
-  --task text2image \
-  --model sd15 \
-  --prompt "a lighthouse in fog" \
-  --backend cuda \
-  --preset fast
+- a local Diffusers directory
+- a Hugging Face repo id such as `stabilityai/stable-diffusion-xl-base-1.0`
+
+For single-file LoRA weights, use a local `.safetensors` file or an explicit Hugging Face ref such as:
+
+```text
+hf://owner/repo/path/to/adapter.safetensors
+hf://owner/repo/path/to/adapter.safetensors?revision=main
 ```
-
-Validate without executing:
-
-```bash
-omnirt validate \
-  --task text2image \
-  --model qwen-image \
-  --prompt "一张带有中文标题的电影海报" \
-  --backend cpu-stub
-
-omnirt generate \
-  --task text2video \
-  --model wan2.2-t2v-14b \
-  --prompt "a glass whale gliding over a moonlit harbor" \
-  --preset fast \
-  --dry-run
-```
-
-Video examples:
-
-```bash
-omnirt generate \
-  --task image2video \
-  --model svd-xt \
-  --image input.png \
-  --backend cuda \
-  --num-frames 25 \
-  --fps 7 \
-  --frame-bucket 127 \
-  --decode-chunk-size 8
-
-omnirt generate \
-  --task text2video \
-  --model cogvideox-2b \
-  --prompt "a wooden toy ship gliding over a plush blue carpet" \
-  --backend cuda \
-  --num-frames 81 \
-  --fps 16
-
-omnirt generate \
-  --task audio2video \
-  --model soulx-flashtalk-14b \
-  --image speaker.png \
-  --audio voice.wav \
-  --prompt "A person is talking." \
-  --backend ascend \
-  --repo-path /home/<user>/SoulX-FlashTalk
-```
-
-Available presets:
-
-- `fast`
-- `balanced`
-- `quality`
-- `low-vram`
 
 ## Python API
 
-Typed request helpers:
-
 ```python
-from omnirt import requests, validate, generate
+from omnirt import generate, requests, validate
 
 req = requests.text2image(
     model="flux2.dev",
@@ -172,36 +160,40 @@ pipe = omnirt.pipeline("sd15", backend="cpu-stub")
 validation = pipe.validate(prompt="a lighthouse in fog", preset="fast")
 ```
 
-## Current Scope
+The same public API also covers `image2image`:
 
-What is already public and stable enough to build against:
+```python
+img2img = requests.image2image(
+    model="sdxl-base-1.0",
+    image="input.png",
+    prompt="cinematic concept art",
+    strength=0.8,
+)
+```
 
-- unified image, video, and audio-driven avatar generation requests
-- validation and model discovery
-- model-family registry metadata
-- code and CLI entrypoints
+## Validation And Testing
 
-What is still intentionally not exposed as a full public task surface yet:
+- `pytest tests/unit tests/parity` covers the local contract and metrics layers
+- `pytest tests/integration/test_error_paths.py` covers low-memory and bad-weight failures
+- CUDA and Ascend smoke tests skip automatically unless the required hardware, runtime packages, and local model directories are available
 
-- `image2image`
-- `inpaint`
-- `edit`
-- `video2video`
+Real end-to-end generation still depends on the target hardware stack, runtime libraries, and model weights.
 
-Some underlying model families are already scaffolded for future expansion, but these task surfaces are not yet first-class OmniRT APIs.
+## Project Status
 
-## Validation and Testing
+- Real hardware smoke coverage is currently confirmed for `sdxl-base-1.0` and `svd-xt` on both CUDA and Ascend
+- `image2image` is publicly supported; `sdxl-refiner-1.0` already has CUDA and Ascend smoke entrypoints but still needs repository-tracked verified local model directories
+- Additional integrated editing models such as `flux-fill`, `flux-kontext`, and `qwen-image-edit*` already have smoke test entrypoints but still need verified local model directories and hardware validation
+- The broader support roadmap is documented in [docs/model-support-roadmap.md](./docs/model-support-roadmap.md) and the live integration snapshot in [docs/support-status.md](./docs/support-status.md)
 
-- `pytest tests/unit tests/parity` exercises the local contract and metrics layer
-- `pytest tests/integration/test_error_paths.py` checks low-memory and bad-weight failures
-- CUDA and Ascend integration tests automatically skip unless hardware, runtime packages, and local model directories are available
+## Documentation
 
-The implementation target and remaining hardware validation details are tracked in [PLAN.md](./PLAN.md).
-
-## Docs
-
+- Docs site: <https://datascale-ai.github.io/omnirt/>
+- English docs: <https://datascale-ai.github.io/omnirt/en/>
 - Model onboarding: [docs/model-onboarding.md](./docs/model-onboarding.md)
+- Support status: [docs/support-status.md](./docs/support-status.md)
 - Model support roadmap: [docs/model-support-roadmap.md](./docs/model-support-roadmap.md)
+- Gap roadmap vs vLLM-Omni: [docs/vllm-omni-gap-roadmap.md](./docs/vllm-omni-gap-roadmap.md)
 - China deployment: [docs/china-deployment.md](./docs/china-deployment.md)
 - Architecture notes: [docs/architecture.md](./docs/architecture.md)
 - Service schema: [docs/service-schema.md](./docs/service-schema.md)
@@ -209,7 +201,8 @@ The implementation target and remaining hardware validation details are tracked 
 
 ## Utilities
 
-- Prepare offline model snapshots: [scripts/prepare_model_snapshot.py](/Users/<user>/Desktop/code/opensource/omnirt/scripts/prepare_model_snapshot.py)
-- Clone Modelers repositories for offline use: [scripts/prepare_modelers_snapshot.py](/Users/<user>/Desktop/code/opensource/omnirt/scripts/prepare_modelers_snapshot.py)
-- Validate local model directory layout: [scripts/check_model_layout.py](/Users/<user>/Desktop/code/opensource/omnirt/scripts/check_model_layout.py)
-- Sync model directories to servers: [scripts/sync_model_dir.sh](/Users/<user>/Desktop/code/opensource/omnirt/scripts/sync_model_dir.sh)
+- Prepare offline model snapshots: [scripts/prepare_model_snapshot.py](./scripts/prepare_model_snapshot.py)
+- Clone Modelers repositories for offline use: [scripts/prepare_modelers_snapshot.py](./scripts/prepare_modelers_snapshot.py)
+- Prepare ModelScope repositories and selected large files for offline use: [scripts/prepare_modelscope_snapshot.py](./scripts/prepare_modelscope_snapshot.py)
+- Validate local model directory layout: [scripts/check_model_layout.py](./scripts/check_model_layout.py)
+- Sync model directories to servers: [scripts/sync_model_dir.sh](./scripts/sync_model_dir.sh)

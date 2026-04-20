@@ -1,7 +1,7 @@
 import json
 
 from omnirt.core.registry import ModelCapabilities, ModelSpec
-from omnirt.cli.main import build_parser, main, request_from_args
+from omnirt.cli.main import build_parser, main, render_model_summary, request_from_args
 
 
 def test_build_parser_accepts_generate_command() -> None:
@@ -394,4 +394,95 @@ def test_main_models_emits_json(monkeypatch, capsys) -> None:
     assert exit_code == 0
     payload = json.loads(stdout)
     assert payload[0]["id"] == "sd15"
+    assert payload[0]["status"] == "public/beta"
     assert "fast" in payload[0]["presets"]
+
+
+def test_render_model_summary_includes_statuses() -> None:
+    primary = ModelSpec(
+        id="sdxl-base-1.0",
+        task="text2image",
+        pipeline_cls=object,
+        default_backend="auto",
+        capabilities=ModelCapabilities(maturity="stable", summary="SDXL base"),
+    )
+    variants = {
+        "text2image": primary,
+        "image2image": ModelSpec(
+            id="sdxl-base-1.0",
+            task="image2image",
+            pipeline_cls=object,
+            default_backend="auto",
+            capabilities=ModelCapabilities(maturity="stable", summary="SDXL image-to-image"),
+        ),
+        "inpaint": ModelSpec(
+            id="sdxl-base-1.0",
+            task="inpaint",
+            pipeline_cls=object,
+            default_backend="auto",
+            capabilities=ModelCapabilities(maturity="beta", summary="SDXL inpaint"),
+        ),
+    }
+
+    summary = render_model_summary(primary, variants=variants)
+
+    assert "status=public/stable" in summary
+    assert "supported_tasks=text2image (public/stable), image2image (public/stable), inpaint (preview/beta)" in summary
+
+
+def test_main_models_text_output_includes_status(monkeypatch, capsys) -> None:
+    spec = ModelSpec(
+        id="sd15",
+        task="text2image",
+        pipeline_cls=object,
+        default_backend="auto",
+        capabilities=ModelCapabilities(maturity="beta", summary="Stable Diffusion 1.5"),
+    )
+    monkeypatch.setattr("omnirt.cli.main.list_available_models", lambda include_aliases=False: [spec])
+
+    exit_code = main(["models"])
+    stdout = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "sd15\ttext2image\tpublic/beta\tStable Diffusion 1.5" in stdout
+
+
+def test_main_model_detail_json_includes_supported_task_statuses(monkeypatch, capsys) -> None:
+    primary = ModelSpec(
+        id="sdxl-base-1.0",
+        task="text2image",
+        pipeline_cls=object,
+        default_backend="auto",
+        capabilities=ModelCapabilities(maturity="stable", summary="SDXL base"),
+    )
+    variants = {
+        "text2image": primary,
+        "image2image": ModelSpec(
+            id="sdxl-base-1.0",
+            task="image2image",
+            pipeline_cls=object,
+            default_backend="auto",
+            capabilities=ModelCapabilities(maturity="stable", summary="SDXL image-to-image"),
+        ),
+        "inpaint": ModelSpec(
+            id="sdxl-base-1.0",
+            task="inpaint",
+            pipeline_cls=object,
+            default_backend="auto",
+            capabilities=ModelCapabilities(maturity="beta", summary="SDXL inpaint"),
+        ),
+    }
+    monkeypatch.setattr("omnirt.cli.main.describe_model", lambda model_id: primary)
+    monkeypatch.setattr("omnirt.cli.main.list_model_variants", lambda model_id: variants)
+
+    exit_code = main(["models", "sdxl-base-1.0", "--json"])
+    stdout = capsys.readouterr().out
+
+    assert exit_code == 0
+    payload = json.loads(stdout)
+    assert payload["status"] == "public/stable"
+    assert payload["supported_task_statuses"] == {
+        "text2image": "public/stable",
+        "image2image": "public/stable",
+        "inpaint": "preview/beta",
+    }

@@ -8,7 +8,7 @@ version = "0.1.0a0"
 description = "Open image & video generation runtime with CUDA and Ascend backends."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+license = "MIT"
 authors = [
   { name = "datascale-ai" }
 ]
@@ -22,8 +22,14 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "build>=1.2",
   "pytest>=8.0",
   "torch>=2.1",
+]
+docs = [
+  "mkdocs>=1.6",
+  "mkdocs-material>=9.5",
+  "mkdocs-static-i18n>=1.2",
 ]
 runtime = [
   "diffusers>=0.37.1",

@@ -1,16 +1,16 @@
-# OmniRT Service Schema
+# OmniRT 服务协议
 
-This document defines the public request and response shape for service-oriented OmniRT integrations.
+本文档定义了面向服务化集成场景的 OmniRT 公开请求与响应结构。
 
-## Versioning
+## 版本约定
 
-- current schema version: `0.1.0`
-- breaking changes should increment the minor version while OmniRT is pre-1.0
-- additive fields should preserve backward compatibility
+- 当前 schema 版本：`0.1.0`
+- 在 OmniRT 仍处于 1.0 之前时，breaking change 应提升 minor version
+- 新增字段应尽量保持向后兼容
 
-## Request
+## 请求结构
 
-The recommended service request mirrors `GenerateRequest`.
+推荐的服务请求结构与 `GenerateRequest` 保持一致。
 
 ```json
 {
@@ -29,27 +29,27 @@ The recommended service request mirrors `GenerateRequest`.
 }
 ```
 
-## Request rules
+## 请求规则
 
-- `task` identifies the user-facing generation surface such as `text2image`, `text2video`, or `image2video`
-- `model` is the OmniRT registry id, not a raw upstream Diffusers class name
-- `inputs` contains semantic content inputs such as `prompt`, `negative_prompt`, `image`, `num_frames`, and `fps`
-- `config` contains execution settings such as `preset`, `scheduler`, `num_inference_steps`, `guidance_scale`, `height`, `width`, `dtype`, and `output_dir`
-- `adapters` contains optional LoRA references
+- `task` 用于标识用户可见的任务面，例如 `text2image`、`text2video`、`image2video`
+- `model` 必须是 OmniRT 的 registry id，而不是上游 Diffusers 的原始类名
+- `inputs` 放语义内容输入，例如 `prompt`、`negative_prompt`、`image`、`num_frames`、`fps`
+- `config` 放执行设置，例如 `preset`、`scheduler`、`num_inference_steps`、`guidance_scale`、`height`、`width`、`dtype`、`output_dir`
+- `adapters` 放可选的 LoRA 引用
 
-## Validation contract
+## 校验契约
 
-Before execution, the service should expose the same validation behavior as `omnirt validate`:
+在真正执行之前，服务层应该暴露与 `omnirt validate` 一致的校验行为：
 
-- reject unknown models with nearby suggestions
-- reject task/model mismatches
-- reject unsupported input and config keys
-- resolve model defaults and named presets
-- report the resolved backend
+- 对未知模型给出相近建议
+- 拒绝任务与模型不匹配的请求
+- 拒绝不支持的输入和配置字段
+- 解析模型默认值和命名 preset
+- 返回最终解析出的后端
 
-## Response
+## 响应结构
 
-The execution response mirrors `GenerateResult`.
+执行响应与 `GenerateResult` 保持一致。
 
 ```json
 {
@@ -88,8 +88,8 @@ The execution response mirrors `GenerateResult`.
 }
 ```
 
-## Stability guidance
+## 稳定性建议
 
-- clients should treat unknown response fields as forward-compatible additions
-- clients should rely on `schema_version` for parsing upgrades
-- artifact `path` values are local runtime outputs unless a higher-level service maps them to object storage URLs
+- 客户端应把未知响应字段视为前向兼容的新增内容
+- 客户端应通过 `schema_version` 决定解析升级策略
+- `artifact.path` 默认表示本地运行时输出路径，除非上层服务额外把它映射成对象存储 URL

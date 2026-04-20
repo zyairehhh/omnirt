@@ -1,19 +1,19 @@
-# OmniRT Interface Improvement Proposal
+# OmniRT 接口改进提案
 
-This document proposes a practical interface roadmap for OmniRT from the user-experience perspective.
+本文档从用户体验角度给出一份务实的 OmniRT 接口演进路线图。
 
-The current interface is good enough for internal engineering use and early adopters, but it is not yet complete or highly discoverable for broader open-source users.
+当前接口已经足够支撑内部工程使用和早期采用者，但对于更广泛的开源用户来说，还不够完整，也不够容易被发现与理解。
 
-## Current assessment
+## 当前评估
 
-What works well today:
+当前做得好的地方：
 
 - one obvious top-level entrypoint: `omnirt generate`
 - one unified request contract: `GenerateRequest`
 - one unified result contract: `GenerateResult` plus `RunReport`
 - backend, artifact export, and telemetry are already normalized across models
 
-What is still weak for users:
+对用户来说依然薄弱的地方：
 
 - users must already know which `model` ids exist
 - users cannot easily discover which parameters a model accepts
@@ -22,77 +22,77 @@ What is still weak for users:
 - task coverage is narrower than the roadmap
 - CLI is execution-oriented, not workflow-oriented
 
-## Design goals
+## 设计目标
 
-1. Keep OmniRT's public interface stable across model families.
-2. Stay Diffusers-backed internally without forcing a raw Diffusers API on users.
-3. Make the CLI and Python API self-discoverable.
-4. Prefer explicit validation over runtime surprises.
-5. Make future tasks such as `image2image`, `inpaint`, `edit`, and `video2video` fit naturally into the same contract family.
+1. 保持 OmniRT 在不同模型家族之间的公开接口稳定。
+2. 内部继续基于 Diffusers，但不要把原始 Diffusers API 直接强加给用户。
+3. 让 CLI 和 Python API 具备自发现能力。
+4. 尽量用显式校验替代运行时惊喜。
+5. 让未来的 `image2image`、`inpaint`、`edit`、`video2video` 能自然纳入同一套契约体系。
 
-## Non-goals
+## 非目标
 
-- Replace Diffusers as the internal model execution layer.
-- Expose every model's raw upstream argument surface directly to users.
-- Make OmniRT fully Diffusers-compatible at the outermost API level.
+- 不替换 Diffusers 作为内部模型执行层。
+- 不把每个模型上游的原始参数面完整暴露给用户。
+- 不追求在最外层 API 上与 Diffusers 完全兼容。
 
 ## P0
 
-These are the highest-value interface improvements and should come first.
+这些是价值最高、应最先落地的改进。
 
-### 1. Model discovery commands
+### 1. 模型发现命令
 
-Add:
+新增：
 
 - `omnirt models`
 - `omnirt models <model-id>`
 
-Expected behavior:
+期望行为：
 
-- list supported model ids
-- show task, default backend, minimum memory hint, and current maturity
-- show model-specific supported parameters and defaults
-- show example commands for that model
+- 列出支持的模型 id
+- 展示任务、默认后端、最低显存提示和当前成熟度
+- 展示模型级支持参数及默认值
+- 展示该模型的示例命令
 
-Why this matters:
+为什么重要：
 
-- it removes the biggest current usability gap
-- it makes the CLI self-explanatory
+- 它解决了当前最大的可用性缺口
+- 它让 CLI 本身变得更可理解
 
-### 2. First-class request validation
+### 2. 一等请求校验能力
 
-Add:
+新增：
 
 - `omnirt validate --config request.yaml`
 - `omnirt generate --dry-run`
 
-Expected behavior:
+期望行为：
 
-- validate task/model compatibility
-- validate required inputs
-- validate supported config keys
-- print resolved defaults without executing generation
+- 校验任务与模型是否兼容
+- 校验必填输入
+- 校验支持的 config key
+- 在不执行生成的情况下打印解析后的默认值
 
-Why this matters:
+为什么重要：
 
-- users can catch mistakes before a long or expensive run
-- this is especially important for video models and remote model directories
+- 用户可以在长耗时或高成本执行前发现错误
+- 这对视频模型和远程模型目录场景尤其重要
 
-### 3. Explicit parameter ownership rules
+### 3. 明确参数归属规则
 
-Document and enforce a simple rule:
+需要文档化并强制执行一个简单规则：
 
 - `inputs`: semantic generation inputs such as `prompt`, `negative_prompt`, `image`, `mask`, `control_image`
 - `config`: execution settings such as `num_inference_steps`, `guidance_scale`, `height`, `width`, `dtype`, `seed`, `output_dir`
 
-Why this matters:
+为什么重要：
 
-- the current split is reasonable but not obvious
-- a fixed rule makes requests easier to teach, validate, and extend
+- 当前拆分方式本身合理，但并不直观
+- 固定规则会让请求结构更容易讲解、校验和扩展
 
-### 4. Better execution summaries
+### 4. 更好的执行摘要
 
-Improve CLI output after success:
+成功执行后，CLI 输出应进一步增强：
 
 - artifact path summary
 - resolved model path
@@ -100,30 +100,30 @@ Improve CLI output after success:
 - key generation settings
 - a compact human-readable mode in addition to JSON
 
-Why this matters:
+为什么重要：
 
-- today the output is structurally useful but not optimized for quick scanning
+- 当前输出在结构上是可用的，但不够适合快速扫读
 
-### 5. Stronger user-facing errors
+### 5. 更强的面向用户错误提示
 
-Errors should include:
+错误信息至少应包含：
 
 - what was wrong
 - what was expected
 - a valid example
 - suggested nearby models or tasks where possible
 
-Example:
+示例：
 
-Instead of only saying a model does not support `text2image`, also suggest the supported task and a replacement command.
+与其只说模型不支持 `text2image`，不如同时提示它实际支持的任务以及替代命令。
 
 ## P1
 
-These improvements make the interface substantially more complete.
+这些改进会让接口显著更完整。
 
-### 1. Typed per-task schemas
+### 1. 按任务区分的 typed schema
 
-Introduce typed request variants internally, for example:
+在内部引入按任务区分的 typed request 变体，例如：
 
 - `TextToImageRequest`
 - `ImageToVideoRequest`
@@ -131,15 +131,15 @@ Introduce typed request variants internally, for example:
 
 These can still serialize into the current `GenerateRequest` envelope if desired.
 
-Why this matters:
+为什么重要：
 
-- better IDE help
-- clearer validation
-- less ambiguity around allowed keys
+- IDE 提示更好
+- 校验更清晰
+- 对允许字段的歧义更少
 
-### 2. Model capability metadata
+### 2. 模型能力元数据
 
-Extend the registry so each model exposes capability metadata such as:
+扩展 registry，让每个模型都暴露以下能力元数据：
 
 - supported tasks
 - required inputs
@@ -149,35 +149,35 @@ Extend the registry so each model exposes capability metadata such as:
 - adapter support
 - output artifact type
 
-This should drive both validation and model help commands.
+这些元数据应同时驱动校验逻辑和模型帮助命令。
 
-### 3. Presets
+### 3. Preset
 
-Add named presets such as:
+增加命名 preset，例如：
 
 - `fast`
 - `balanced`
 - `quality`
 - `low-vram`
 
-Why this matters:
+为什么重要：
 
-- most users do not want to tune `guidance_scale`, `steps`, and `dtype` manually for every run
+- 大多数用户并不希望每次都手动调 `guidance_scale`、`steps` 和 `dtype`
 
-### 4. Fill out the missing task surfaces
+### 4. 补齐缺失的任务面
 
-The interface should grow to include:
+接口应逐步扩展到：
 
 - `image2image`
 - `inpaint`
 - `edit`
 - `video2video`
 
-These should not be bolted on ad hoc. They should fit the same task-plus-model contract cleanly.
+这些能力不应以拼接式方式硬塞进来，而应自然融入“任务 + 模型”的同一套契约。
 
-### 5. Better Python ergonomics
+### 5. 更好的 Python 易用性
 
-Add helper constructors such as:
+增加类似这样的 helper constructor：
 
 ```python
 from omnirt import requests
@@ -191,72 +191,77 @@ req = requests.text2image(
 )
 ```
 
-Why this matters:
+为什么重要：
 
-- the current dataclass API is serviceable but not very ergonomic
+- 当前 dataclass API 虽然可用，但不够顺手
 
 ## P2
 
-These are valuable, but not urgent.
+这些改进有价值，但不紧急。
 
-### 1. Optional Diffusers-style convenience wrapper
+### 1. 可选的 Diffusers 风格便捷封装
 
-Expose a convenience layer like:
+可以提供类似这样的便捷层：
 
 ```python
 pipe = omnirt.pipeline("flux2.dev")
 image = pipe(prompt="hello", num_inference_steps=30)
 ```
 
-This should be optional sugar, not the primary API.
+它应是可选语法糖，而不是主 API。
 
-### 2. OpenAPI or service schema
+### 2. OpenAPI 或服务协议
 
-If OmniRT is expected to back a service, define a stable service-facing schema and versioning plan.
+如果 OmniRT 预计会作为服务后端使用，就需要定义稳定的服务协议和版本演进方案。
 
-### 3. Interactive CLI guidance
+### 3. 交互式 CLI 指导
 
-Longer term, add guided help such as:
+长期来看，可以增加如下引导式帮助：
 
-- missing required input suggestions
-- model recommendation by task
-- preset recommendation based on available memory
+- 缺失必填输入时给出建议
+- 按任务推荐模型
+- 根据可用显存推荐 preset
 
-## Proposed contract direction
+## 推荐契约方向
 
-The recommended direction is:
+推荐方向是：
 
-- keep the top-level `GenerateRequest` envelope
-- make it strongly validated
-- add model capability metadata
-- add task-specific typed helpers
-- keep model implementations free to adapt to Diffusers internally
+- 保留顶层 `GenerateRequest` 包结构
+- 强化其校验能力
+- 增加模型能力元数据
+- 增加按任务拆分的 typed helper
+- 让模型内部实现继续自由适配 Diffusers
 
-This preserves OmniRT's runtime identity while fixing the biggest usability gaps.
+这样既能保住 OmniRT 的运行时定位，也能修复最显著的可用性缺口。
 
-## Suggested implementation order
+## 建议实施顺序
 
-1. Add model metadata to the registry.
-2. Implement `omnirt models` and `omnirt models <id>`.
-3. Implement `validate` and `--dry-run`.
-4. Tighten schema validation for existing tasks.
-5. Improve CLI success and error output.
-6. Add typed task helpers in Python.
-7. Expand the public task surface to editing and conversion workflows.
+1. 为 registry 增加模型元数据。
+2. 实现 `omnirt models` 和 `omnirt models <id>`。
+3. 实现 `validate` 和 `--dry-run`。
+4. 收紧现有任务的 schema 校验。
+5. 改进 CLI 成功输出和错误输出。
+6. 在 Python 侧增加 typed task helper。
+7. 把公开任务面扩展到编辑和转换工作流。
 
-## Acceptance criteria
+## 验收标准
 
-The interface should be considered meaningfully improved when a new user can:
+当一个新用户能够做到以下几点时，就可以认为接口有了实质提升：
 
-1. discover supported models without reading source code
-2. understand which arguments a model accepts without trial and error
-3. validate a request before execution
-4. read the CLI output and immediately know what happened
-5. move from one model family to another without relearning the entire request shape
+1. 不读源码也能发现支持的模型
+2. 不靠试错就能知道某个模型接受哪些参数
+3. 在执行前先校验请求
+4. 读 CLI 输出时能立刻理解发生了什么
+5. 从一个模型家族切到另一个模型家族时，不需要重学整套请求结构
 
-## Recommended first implementation slice
+## 推荐的第一期实现切片
 
-If only one short iteration is available, the best slice is:
+如果只有一次较短迭代，最值得先做的切片是：
+
+- 补齐 registry 元数据
+- 落地 `omnirt models`
+- 落地 `omnirt validate`
+- 给现有 CLI 输出增加更强的默认解释力
 
 - registry capability metadata
 - `omnirt models`

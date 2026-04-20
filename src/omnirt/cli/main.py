@@ -13,6 +13,28 @@ from omnirt.core.presets import available_presets
 from omnirt.core.registry import list_model_variants
 from omnirt.core.types import GenerateRequest, OmniRTError
 
+PUBLIC_TASK_SURFACES = frozenset(
+    {
+        "text2image",
+        "image2image",
+        "text2video",
+        "image2video",
+        "audio2video",
+    }
+)
+
+
+def task_surface_label(task: str) -> str:
+    return "public" if task in PUBLIC_TASK_SURFACES else "preview"
+
+
+def model_status_label(spec) -> str:
+    return f"{task_surface_label(spec.task)}/{spec.capabilities.maturity}"
+
+
+def render_supported_tasks(variants) -> str:
+    return ", ".join(f"{task} ({model_status_label(spec)})" for task, spec in variants.items())
+
 
 def add_request_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--config", help="Path to a YAML or JSON request file.")
@@ -85,7 +107,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     models_parser = subparsers.add_parser("models", help="List supported models or show one model in detail.")
     models_parser.add_argument("model", nargs="?", help="Optional model id to describe.")
-    models_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON to stdout.")
+    output_group = models_parser.add_mutually_exclusive_group()
+    output_group.add_argument("--json", action="store_true", help="Emit machine-readable JSON to stdout.")
+    output_group.add_argument(
+        "--format",
+        choices=["text", "json", "markdown"],
+        default="text",
+        help="Output format for the list view. Markdown is deterministic and suitable for docs generation.",
+    )
 
     return parser
 
@@ -211,16 +240,17 @@ def request_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser)
     )
 
 
-def render_model_summary(spec, *, variants=()) -> str:
+def render_model_summary(spec, *, variants=None) -> str:
     caps = spec.capabilities
     lines = [
         f"model={spec.id}",
         f"task={spec.task}",
+        f"status={model_status_label(spec)}",
         f"default_backend={spec.default_backend}",
         f"maturity={caps.maturity}",
     ]
     if variants:
-        lines.append(f"supported_tasks={', '.join(variants)}")
+        lines.append(f"supported_tasks={render_supported_tasks(variants)}")
     if caps.summary:
         lines.append(f"summary={caps.summary}")
     if caps.alias_of:
@@ -295,14 +325,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             except (OmniRTError, ValueError) as exc:
                 print(f"error: {exc}", file=sys.stderr)
                 return 2
-            variants = tuple(list_model_variants(args.model))
+            variants = list_model_variants(args.model)
             if args.json:
                 print(
                     json.dumps(
                         {
                             "id": spec.id,
                             "task": spec.task,
-                            "supported_tasks": variants,
+                            "status": model_status_label(spec),
+                            "supported_tasks": list(variants),
+                            "supported_task_statuses": {
+                                task: model_status_label(variant_spec) for task, variant_spec in variants.items()
+                            },
                             "default_backend": spec.default_backend,
                             "resource_hint": spec.resource_hint,
                             "presets": list(available_presets()),
@@ -324,6 +358,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         {
                             "id": spec.id,
                             "task": spec.task,
+                            "status": model_status_label(spec),
                             "default_backend": spec.default_backend,
                             "maturity": spec.capabilities.maturity,
                             "summary": spec.capabilities.summary,
@@ -337,7 +372,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
         else:
             for spec in specs:
-                print(f"{spec.id}\t{spec.task}\t{spec.capabilities.maturity}\t{spec.capabilities.summary}")
+                print(f"{spec.id}\t{spec.task}\t{model_status_label(spec)}\t{spec.capabilities.summary}")
         return 0
 
     if args.command not in {"generate", "validate"}:

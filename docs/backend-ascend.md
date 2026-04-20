@@ -1,28 +1,28 @@
-# Ascend Backend Notes
+# Ascend 后端说明
 
-The Ascend backend follows the same contract as CUDA, but its compile path is intentionally conservative.
+Ascend 后端与 CUDA 共享同一套外部契约，但在编译路径上会更保守一些。
 
-## Execution model
+## 执行模型
 
-- backend name: `ascend`
-- device name: `npu`
-- compile attempt: `torch_npu.npu.graph_mode()` when available
-- fallback behavior: if graph-mode setup fails or a module cannot be compiled, the runtime records the failure and keeps the eager module
+- 后端名称：`ascend`
+- 设备名称：`npu`
+- 编译尝试：可用时调用 `torch_npu.npu.graph_mode()`
+- 回退行为：如果 graph-mode 初始化失败或模块无法编译，运行时会记录失败并保留 eager 模块
 
-## Current expectations
+## 当前约束
 
-- requests can explicitly target `--backend ascend`
-- the same `GenerateRequest` schema is used for CUDA and Ascend
-- capability reporting exposes dtype options and compile availability
-- backend fallback attempts are preserved in `RunReport.backend_timeline`
+- 请求可以通过 `--backend ascend` 显式指定 Ascend
+- CUDA 与 Ascend 使用同一套 `GenerateRequest` schema
+- capability reporting 会暴露 dtype 选项和 compile 可用性
+- 后端回退尝试会保留在 `RunReport.backend_timeline` 中
 
-## Validation workflow
+## 校验流程
 
-The repository ships Ascend smoke tests, but they run only when all of the following are true:
+仓库已经提供 Ascend smoke tests，但只有在满足以下条件时才会运行：
 
 - `torch_npu` is installed
 - Diffusers runtime dependencies are installed
 - model sources are provided through `OMNIRT_SDXL_MODEL_SOURCE` and `OMNIRT_SVD_MODEL_SOURCE`
 - the tests execute on an Ascend-capable host
 
-Without those prerequisites the tests skip rather than failing noisily.
+如果这些前置条件不满足，测试会直接 skip，而不是产生噪声式失败。

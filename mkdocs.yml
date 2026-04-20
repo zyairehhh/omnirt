@@ -1,0 +1,96 @@
+site_name: OmniRT
+site_description: 面向 CUDA 与 Ascend 后端的开源图像与视频生成运行时。
+site_url: https://datascale-ai.github.io/omnirt/
+repo_url: https://github.com/datascale-ai/omnirt
+repo_name: datascale-ai/omnirt
+
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: default
+      primary: blue grey
+      accent: blue
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: suffix
+      fallback_to_default: true
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: zh
+          default: true
+          build: true
+          name: 简体中文
+          link: /
+          site_name: OmniRT
+          site_description: 面向 CUDA 与 Ascend 后端的开源图像与视频生成运行时。
+          theme:
+            language: zh
+        - locale: en
+          build: true
+          name: English
+          link: /en/
+          site_name: OmniRT
+          site_description: Open image and video generation runtime with CUDA and Ascend backends.
+          theme:
+            language: en
+          nav:
+            - Home: index.md
+            - Getting Started: getting-started.md
+            - Usage:
+                - CLI: cli.md
+                - Python API: python-api.md
+            - Guides:
+                - Architecture: architecture.md
+                - Service Schema: service-schema.md
+                - Model Onboarding: model-onboarding.md
+                - Support Status: support-status.md
+                - China Deployment: china-deployment.md
+                - Ascend Backend: backend-ascend.md
+            - Roadmap:
+                - Model Support Roadmap: model-support-roadmap.md
+                - Interface Improvement Proposal: interface-improvement-proposal.md
+            - Decisions:
+                - ADR 0001: adr/0001-v0.1-scope.md
+            - Project:
+                - Publishing Docs: publishing-docs.md
+
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - 首页: index.md
+  - 快速开始: getting-started.md
+  - 使用指南:
+      - CLI: cli.md
+      - Python API: python-api.md
+  - 深入说明:
+      - 架构说明: architecture.md
+      - 服务协议: service-schema.md
+      - 模型接入: model-onboarding.md
+      - 当前支持状态: support-status.md
+      - 中国区部署: china-deployment.md
+      - Ascend 后端: backend-ascend.md
+  - 规划:
+      - 模型支持路线图: model-support-roadmap.md
+      - 接口改进提案: interface-improvement-proposal.md
+  - 决策记录:
+      - ADR 0001: adr/0001-v0.1-scope.md
+  - 项目维护:
+      - 文档发布: publishing-docs.md

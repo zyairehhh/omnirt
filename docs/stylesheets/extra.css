@@ -1,0 +1,59 @@
+:root {
+  --md-primary-fg-color: #37474f;
+  --md-accent-fg-color: #1565c0;
+}
+
+.md-typeset .intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1rem 0 1.4rem;
+}
+
+.md-typeset h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.md-typeset .compact-cards > ul > li,
+.md-typeset .compact-cards > ol > li {
+  padding-top: 0.1rem;
+}
+
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid.cards > ol > li {
+  border: 1px solid rgba(55, 71, 79, 0.12);
+  border-radius: 0.8rem;
+  box-shadow: 0 0.75rem 1.5rem rgba(30, 41, 59, 0.06);
+}
+
+.md-typeset .grid.cards > ul > li:hover,
+.md-typeset .grid.cards > ol > li:hover {
+  border-color: rgba(21, 101, 192, 0.28);
+  box-shadow: 0 1rem 2rem rgba(21, 101, 192, 0.12);
+}
+
+.md-typeset .split-panels {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 1rem 0 1.2rem;
+}
+
+.md-typeset .split-panels section {
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(55, 71, 79, 0.12);
+  border-radius: 0.9rem;
+  background: linear-gradient(180deg, rgba(250, 251, 252, 1), rgba(245, 247, 249, 1));
+}
+
+.md-typeset .split-panels h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+@media screen and (max-width: 44.9375em) {
+  .md-typeset .split-panels {
+    grid-template-columns: 1fr;
+  }
+}
