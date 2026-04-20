@@ -162,18 +162,20 @@ class SD3Pipeline(BasePipeline):
                 "callback_on_step_end": self.make_latent_callback(latents["steps"]),
                 "callback_on_step_end_tensor_inputs": ["latents"],
             }
-        result = pipeline(
-            prompt=conditions["prompt"],
-            negative_prompt=conditions.get("negative_prompt"),
-            num_inference_steps=latents["steps"],
-            guidance_scale=latents["guidance_scale"],
-            generator=latents["generator"],
-            height=conditions["height"],
-            width=conditions["width"],
-            num_images_per_prompt=conditions["num_images_per_prompt"],
-            output_type="pil",
+        kwargs = {
+            "prompt": conditions["prompt"],
+            "negative_prompt": conditions.get("negative_prompt"),
+            "num_inference_steps": latents["steps"],
+            "guidance_scale": latents["guidance_scale"],
+            "generator": latents["generator"],
+            "height": conditions["height"],
+            "width": conditions["width"],
+            "num_images_per_prompt": conditions["num_images_per_prompt"],
+            "output_type": "pil",
             **callback_kwargs,
-        )
+        }
+        kwargs = self.inject_cached_prompt_embeddings(pipeline, kwargs)
+        result = pipeline(**kwargs)
         return {
             "images": list(result.images),
             "seed": latents["seed"],

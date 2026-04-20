@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import Any
 
 from omnirt.core.types import is_generate_result_like
@@ -29,10 +30,9 @@ class LegacyCallExecutor(Executor):
         self.apply_middleware([BackendWrapperMiddleware()])
 
     def run(self, request, *, event_callback=None, cache=None) -> Any:
-        del cache
         emit_event(event_callback, "stage_start", "legacy_call", data={"model": request.model})
         try:
-            result = self.pipeline.run(request)
+            result = self._run_pipeline(request, cache=cache)
         except Exception as exc:
             emit_event(
                 event_callback,
@@ -49,3 +49,15 @@ class LegacyCallExecutor(Executor):
     def release(self) -> None:
         self.components.clear()
         self.pipeline = None
+
+    def _run_pipeline(self, request, *, cache=None):
+        run_method = self.pipeline.run
+        try:
+            parameters = inspect.signature(run_method).parameters
+        except (TypeError, ValueError, AttributeError):
+            return run_method(request)
+        if "result_cache" in parameters or any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()
+        ):
+            return run_method(request, result_cache=cache)
+        return run_method(request)

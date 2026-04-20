@@ -120,6 +120,7 @@ class SD15InpaintPipeline(SD15Pipeline):
         if self._supports_callback_on_step_end(pipeline):
             kwargs["callback_on_step_end"] = self.make_latent_callback(latents["steps"])
             kwargs["callback_on_step_end_tensor_inputs"] = ["latents"]
+        kwargs = self.inject_cached_prompt_embeddings(pipeline, kwargs)
         result = pipeline(**self._filter_call_kwargs(pipeline, kwargs))
         return {
             "images": list(result.images),

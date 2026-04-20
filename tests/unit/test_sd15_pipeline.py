@@ -68,6 +68,7 @@ class FakeDiffusersPipeline:
         self.calls = []
         self.loras = []
         self.fused = []
+        self.encode_prompt_calls = []
         self.model_cpu_offload_enabled = False
         self.sequential_cpu_offload_enabled = False
         self.group_offload_kwargs = None
@@ -117,6 +118,10 @@ class FakeDiffusersPipeline:
         self.calls.append(kwargs)
         image = Image.new("RGB", (kwargs["width"], kwargs["height"]), color="white")
         return SimpleNamespace(images=[image])
+
+    def encode_prompt(self, **kwargs):
+        self.encode_prompt_calls.append(kwargs)
+        return ("prompt-embed", "negative-prompt-embed")
 
 
 def build_model_spec() -> ModelSpec:
@@ -348,3 +353,31 @@ def test_sd15_pipeline_applies_diffusers_optimization_flags(tmp_path, monkeypatc
     assert created.vae_tiling_enabled is True
     assert "qkv" in created.fused
     assert runtime.to_device_calls == []
+
+
+def test_sd15_pipeline_reuses_cached_prompt_embeddings(tmp_path, monkeypatch) -> None:
+    from omnirt.engine.result_cache import ResultCache
+
+    _reset_created()
+    monkeypatch.setattr(SD15Pipeline, "_diffusers_pipeline_cls", lambda self: FakeDiffusersPipeline)
+    monkeypatch.setattr("omnirt.models.sd15.pipeline.build_scheduler", lambda config: {"name": "euler"})
+
+    request = GenerateRequest(
+        task="text2image",
+        model="sd15",
+        backend="cuda",
+        inputs={"prompt": "cache me", "negative_prompt": "bad"},
+        config={"output_dir": str(tmp_path), "seed": 3},
+    )
+    pipeline = SD15Pipeline(runtime=FakeCudaRuntime(), model_spec=build_model_spec())
+    cache = ResultCache(max_items=8)
+
+    first = pipeline.run(request, result_cache=cache)
+    second = pipeline.run(request, result_cache=cache)
+
+    created = FakeDiffusersPipeline.created[-1]
+    assert len(created.encode_prompt_calls) == 1
+    assert first.metadata.cache_hits == []
+    assert second.metadata.cache_hits == ["text_embedding"]
+    assert created.calls[-1]["prompt_embeds"] == "prompt-embed"
+    assert "prompt" not in created.calls[-1]

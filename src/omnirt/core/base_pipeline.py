@@ -45,6 +45,9 @@ class BasePipeline(ABC):
         self.components: Dict[str, Any] = {}
         self.loaded_adapters = []
         self._captured_latent = None
+        self._active_request: Optional[GenerateRequest] = None
+        self._active_result_cache = None
+        self._active_cache_hits: List[str] = []
 
         if self.adapters:
             self.loaded_adapters = self.adapter_manager.load_all(self.adapters)
@@ -195,13 +198,95 @@ class BasePipeline(ABC):
             except Exception:
                 continue
 
-    def run(self, req: GenerateRequest) -> GenerateResult:
+    def inject_cached_prompt_embeddings(self, pipeline: Any, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        cache = self._active_result_cache
+        req = self._active_request
+        if cache is None or req is None or not req.config.get("use_result_cache", True):
+            return kwargs
+        if req.inputs.get("prompt") in (None, "") or not hasattr(pipeline, "encode_prompt"):
+            return kwargs
+
+        cached = cache.lookup_embeddings(req)
+        if cached is None:
+            bundle = self._encode_prompt_bundle(pipeline, req=req, kwargs=kwargs)
+            if bundle:
+                cache.save_embeddings(req, bundle)
+                return self._inject_prompt_bundle(dict(kwargs), bundle)
+            return kwargs
+
+        if "text_embedding" not in self._active_cache_hits:
+            self._active_cache_hits.append("text_embedding")
+        return self._inject_prompt_bundle(dict(kwargs), cached)
+
+    def _encode_prompt_bundle(self, pipeline: Any, *, req: GenerateRequest, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            encode_signature = inspect.signature(pipeline.encode_prompt)
+        except (TypeError, ValueError, AttributeError):
+            return {}
+
+        encode_kwargs = {
+            "prompt": req.inputs.get("prompt"),
+            "negative_prompt": req.inputs.get("negative_prompt"),
+            "num_images_per_prompt": kwargs.get("num_images_per_prompt"),
+            "max_sequence_length": kwargs.get("max_sequence_length"),
+            "device": getattr(self.runtime, "device_name", None),
+            "do_classifier_free_guidance": bool((kwargs.get("guidance_scale") or 0) > 1),
+        }
+        if not any(param.kind == inspect.Parameter.VAR_KEYWORD for param in encode_signature.parameters.values()):
+            encode_kwargs = {k: v for k, v in encode_kwargs.items() if v is not None and k in encode_signature.parameters}
+        else:
+            encode_kwargs = {k: v for k, v in encode_kwargs.items() if v is not None}
+
+        try:
+            encoded = pipeline.encode_prompt(**encode_kwargs)
+        except Exception:
+            return {}
+
+        if isinstance(encoded, dict):
+            return {key: value for key, value in encoded.items() if key.endswith("embeds")}
+        if isinstance(encoded, tuple):
+            names_by_len = {
+                2: ("prompt_embeds", "negative_prompt_embeds"),
+                4: (
+                    "prompt_embeds",
+                    "negative_prompt_embeds",
+                    "pooled_prompt_embeds",
+                    "negative_pooled_prompt_embeds",
+                ),
+            }
+            names = names_by_len.get(len(encoded))
+            if names is not None:
+                return {name: value for name, value in zip(names, encoded)}
+        bundle = {}
+        for name in (
+            "prompt_embeds",
+            "negative_prompt_embeds",
+            "pooled_prompt_embeds",
+            "negative_pooled_prompt_embeds",
+        ):
+            value = getattr(encoded, name, None)
+            if value is not None:
+                bundle[name] = value
+        return bundle
+
+    def _inject_prompt_bundle(self, kwargs: Dict[str, Any], bundle: Dict[str, Any]) -> Dict[str, Any]:
+        kwargs.update(bundle)
+        if "prompt_embeds" in bundle:
+            kwargs.pop("prompt", None)
+        if "negative_prompt_embeds" in bundle:
+            kwargs.pop("negative_prompt", None)
+        return kwargs
+
+    def run(self, req: GenerateRequest, *, result_cache=None) -> GenerateResult:
         run_id = str(uuid.uuid4())
         timings: Dict[str, float] = {}
         outputs: List[Artifact] = []
         self.runtime.backend_timeline = []
         self.runtime.reset_memory_stats()
         self._captured_latent = None
+        self._active_request = req
+        self._active_result_cache = result_cache
+        self._active_cache_hits = []
         self.ensure_resource_budget()
 
         sync_stages = {"denoise_loop", "decode"}
@@ -243,6 +328,7 @@ class BasePipeline(ABC):
                 artifacts=outputs,
                 error=None,
                 latent_stats=self._compute_latent_stats(),
+                cache_hits=self._active_cache_hits,
             )
             self.last_report = report
             return GenerateResult(outputs=outputs, metadata=report)
@@ -258,6 +344,7 @@ class BasePipeline(ABC):
                 artifacts=outputs,
                 error=str(exc),
                 latent_stats=self._compute_latent_stats(),
+                cache_hits=self._active_cache_hits,
             )
             self.last_report = report
             self.logger.error(
@@ -265,3 +352,6 @@ class BasePipeline(ABC):
                 extra={"run_id": run_id, "model": req.model, "backend": self.runtime.name, "error": report.error},
             )
             raise
+        finally:
+            self._active_request = None
+            self._active_result_cache = None

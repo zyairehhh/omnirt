@@ -103,15 +103,29 @@ class ModularExecutor(Executor):
                 cache_hits.append("text_embedding")
 
         emit_event(event_callback, "stage_start", "modular_pipeline", data={"model": request.model})
+        emit_event(event_callback, "stage_start", "denoise", data={"model": request.model})
         started = time.perf_counter()
         result = self.pipeline(**self._filter_call_kwargs(kwargs))
         runtime.synchronize()
         timings["pipeline_call_ms"] = round((time.perf_counter() - started) * 1000, 3)
+        emit_event(
+            event_callback,
+            "stage_end",
+            "denoise",
+            data={"model": request.model, "elapsed_ms": timings["pipeline_call_ms"]},
+        )
         emit_event(event_callback, "stage_end", "modular_pipeline", data={"model": request.model})
 
         export_started = time.perf_counter()
+        emit_event(event_callback, "stage_start", "export", data={"model": request.model})
         artifacts = self._export(result, request)
         timings["export_ms"] = round((time.perf_counter() - export_started) * 1000, 3)
+        emit_event(
+            event_callback,
+            "stage_end",
+            "export",
+            data={"model": request.model, "elapsed_ms": timings["export_ms"]},
+        )
 
         resolved_config = dict(request.config)
         if "model_path" not in resolved_config and self.model_spec.modular_pretrained_id:

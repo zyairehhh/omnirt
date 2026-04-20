@@ -98,6 +98,7 @@ class VideoFamilyPipeline(BasePipeline):
                 "callback_on_step_end_tensor_inputs": ["latents"],
             }
         kwargs.update(callback_kwargs)
+        kwargs = self.inject_cached_prompt_embeddings(pipeline, kwargs)
         result = pipeline(**self._filter_call_kwargs(pipeline, kwargs))
         frames = getattr(result, "frames", None)
         if frames is None and isinstance(result, tuple):

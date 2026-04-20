@@ -82,6 +82,7 @@ class GeneralistImagePipeline(BasePipeline):
             }
         kwargs.update(callback_kwargs)
         filtered_kwargs = self._filter_call_kwargs(pipeline, kwargs)
+        filtered_kwargs = self.inject_cached_prompt_embeddings(pipeline, filtered_kwargs)
         self._apply_runtime_overrides(pipeline, filtered_kwargs)
         result = pipeline(**filtered_kwargs)
         images = getattr(result, "images", None)
