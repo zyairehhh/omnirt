@@ -10,6 +10,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from omnirt.api import validate
 from omnirt.core.types import GenerateRequest, is_generate_result_like
 from omnirt.server.model_aliases import resolve_model_alias
+from omnirt.server.request_config import normalize_generate_request
 
 router = APIRouter()
 
@@ -38,12 +39,15 @@ def _result_to_openai_images(result) -> dict:
 @router.post("/v1/images/generations")
 async def openai_images_generations(payload: dict, request: Request):
     model = resolve_model_alias(str(payload["model"]), request.app.state.model_aliases)
-    req = GenerateRequest(
+    req = normalize_generate_request(
+        GenerateRequest(
         task="text2image",
         model=model,
         backend=_resolve_backend(request, payload.get("backend")),
         inputs={"prompt": str(payload["prompt"])},
         config={**_image_size_to_config(payload.get("size")), "num_images_per_prompt": int(payload.get("n", 1))},
+        ),
+        request.app.state,
     )
     validation = validate(req, backend=req.backend)
     if not validation.ok:
@@ -75,12 +79,15 @@ async def openai_images_edits(
     inputs = {"image": image_path, "prompt": prompt}
     if mask_path:
         inputs["mask"] = mask_path
-    req = GenerateRequest(
-        task=task,
-        model=resolve_model_alias(model, request.app.state.model_aliases),
-        backend=request.app.state.default_backend,
-        inputs=inputs,
-        config={},
+    req = normalize_generate_request(
+        GenerateRequest(
+            task=task,
+            model=resolve_model_alias(model, request.app.state.model_aliases),
+            backend=request.app.state.default_backend,
+            inputs=inputs,
+            config={},
+        ),
+        request.app.state,
     )
     validation = validate(req, backend=req.backend)
     if not validation.ok:
@@ -102,12 +109,15 @@ async def openai_videos_generations(payload: dict, request: Request):
         inputs["num_frames"] = int(payload["num_frames"])
     if payload.get("fps") is not None:
         inputs["fps"] = int(payload["fps"])
-    req = GenerateRequest(
-        task=task,
-        model=model,
-        backend=_resolve_backend(request, payload.get("backend")),
-        inputs=inputs,
-        config={},
+    req = normalize_generate_request(
+        GenerateRequest(
+            task=task,
+            model=model,
+            backend=_resolve_backend(request, payload.get("backend")),
+            inputs=inputs,
+            config={},
+        ),
+        request.app.state,
     )
     validation = validate(req, backend=req.backend)
     if not validation.ok:

@@ -78,3 +78,5 @@ def test_run_bench_aggregates_metrics() -> None:
     assert report.execution_mode_breakdown == {"modular": 4}
     assert report.cache_hit_ratio == 0.5
     assert report.peak_vram == 35.0
+    assert report.batch_size_mean == 1.0
+    assert report.batched_request_ratio == 0.0

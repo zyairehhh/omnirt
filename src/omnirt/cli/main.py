@@ -90,6 +90,8 @@ def add_request_arguments(parser: argparse.ArgumentParser) -> None:
         help="External launcher for script-backed models.",
     )
     parser.add_argument("--nproc-per-node", type=int, help="Process count for multi-card torchrun launches.")
+    parser.add_argument("--num-processes", type=int, help="Process count for accelerate launches.")
+    parser.add_argument("--accelerate-executable", help="Accelerate executable used for launcher=accelerate.")
     parser.add_argument("--visible-devices", help="Device visibility override, for example 0,1,2,3,4,5,6,7 on Ascend.")
     parser.add_argument("--ascend-env-script", help="Ascend environment script to source before launching an external model.")
     parser.add_argument("--t5-quant", choices=["int8", "fp8"], help="T5 quantization mode for FlashTalk.")
@@ -253,6 +255,8 @@ def request_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser)
         "python_executable",
         "launcher",
         "nproc_per_node",
+        "num_processes",
+        "accelerate_executable",
         "visible_devices",
         "ascend_env_script",
         "t5_quant",
@@ -429,6 +433,8 @@ def render_bench_summary(payload: dict) -> str:
             f"ttft_p50_ms={ttft.get('p50', 0)}",
             f"peak_vram={payload.get('peak_vram', 0)}",
             f"cache_hit_ratio={payload.get('cache_hit_ratio', 0)}",
+            f"batch_size_mean={payload.get('batch_size_mean', 0)}",
+            f"batched_request_ratio={payload.get('batched_request_ratio', 0)}",
         ]
     )
 

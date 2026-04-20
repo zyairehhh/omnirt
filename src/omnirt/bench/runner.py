@@ -81,6 +81,7 @@ def _build_report(scenario: BenchScenario, invocations: Sequence[BenchInvocation
     execution_mode_breakdown: dict[str, int] = {}
     peak_vram = 0.0
     cache_hit_count = 0
+    batch_sizes: list[int] = []
 
     for invocation in invocations:
         metadata = invocation.result.metadata
@@ -89,6 +90,9 @@ def _build_report(scenario: BenchScenario, invocations: Sequence[BenchInvocation
         peak_vram = max(peak_vram, _peak_memory_value(metadata.memory))
         if metadata.cache_hits:
             cache_hit_count += 1
+        batch_sizes.append(max(int(getattr(metadata, "batch_size", 1) or 1), 1))
+
+    batched_requests = [size for size in batch_sizes if size > 1]
 
     return BenchReport(
         scenario=scenario.name,
@@ -101,6 +105,8 @@ def _build_report(scenario: BenchScenario, invocations: Sequence[BenchInvocation
         ttft_ms=summarize_latency(ttfts),
         peak_vram=round(peak_vram, 3),
         cache_hit_ratio=round(cache_hit_count / max(len(invocations), 1), 3),
+        batch_size_mean=round(sum(batch_sizes) / max(len(batch_sizes), 1), 3),
+        batched_request_ratio=round(len(batched_requests) / max(len(batch_sizes), 1), 3),
         execution_mode_breakdown=execution_mode_breakdown,
     )
 

@@ -136,3 +136,40 @@ def test_openai_images_generations_route(monkeypatch) -> None:
     payload = response.json()
     assert len(payload["data"]) == 1
     assert payload["data"][0]["url"] == "/tmp/server.png"
+
+
+def test_openai_routes_inherit_default_request_config(monkeypatch) -> None:
+    captured = {}
+
+    @register_model(
+        id="dummy-image",
+        task="text2image",
+        capabilities=ModelCapabilities(
+            required_inputs=("prompt",),
+            supported_config=("width", "height", "num_images_per_prompt", "device_map"),
+        ),
+    )
+    class DummyPipeline:
+        def __init__(self, **kwargs):
+            pass
+
+        def run(self, req):
+            captured["config"] = dict(req.config)
+            return _dummy_result(req.task, req.model, req.backend)
+
+    monkeypatch.setattr(api_module, "ensure_registered", lambda: None)
+    app = create_app(
+        default_backend="cpu-stub",
+        max_concurrency=1,
+        pipeline_cache_size=1,
+        default_request_config={"device_map": "balanced"},
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/images/generations",
+        json={"model": "dummy-image", "prompt": "hello", "size": "512x512", "n": 1},
+    )
+
+    assert response.status_code == 200
+    assert captured["config"]["device_map"] == "balanced"

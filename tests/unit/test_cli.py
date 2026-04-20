@@ -310,6 +310,34 @@ def test_request_from_args_accepts_accelerate_launcher() -> None:
     assert request.config["launcher"] == "accelerate"
 
 
+def test_request_from_args_accepts_accelerate_config() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "generate",
+            "--task",
+            "audio2video",
+            "--model",
+            "soulx-flashtalk-14b",
+            "--image",
+            "speaker.png",
+            "--audio",
+            "voice.wav",
+            "--launcher",
+            "accelerate",
+            "--num-processes",
+            "4",
+            "--accelerate-executable",
+            "/tmp/accelerate",
+        ]
+    )
+
+    request = request_from_args(args, parser)
+
+    assert request.config["num_processes"] == 4
+    assert request.config["accelerate_executable"] == "/tmp/accelerate"
+
+
 def test_main_prints_clean_omnirt_errors(monkeypatch, capsys) -> None:
     from omnirt.core.types import BackendUnavailableError
 
@@ -389,6 +417,8 @@ def test_main_bench_emits_json(monkeypatch, capsys) -> None:
                 "ttft_ms": {"p50": 30.0, "p95": 40.0, "p99": 45.0},
                 "peak_vram": 12.0,
                 "cache_hit_ratio": 0.5,
+                "batch_size_mean": 1.5,
+                "batched_request_ratio": 0.5,
                 "execution_mode_breakdown": {"modular": 10},
             }
 

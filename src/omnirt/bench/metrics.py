@@ -34,6 +34,8 @@ class BenchReport:
     ttft_ms: Dict[str, float]
     peak_vram: float
     cache_hit_ratio: float
+    batch_size_mean: float
+    batched_request_ratio: float
     execution_mode_breakdown: Dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, object]:
@@ -48,6 +50,8 @@ class BenchReport:
             "ttft_ms": dict(self.ttft_ms),
             "peak_vram": self.peak_vram,
             "cache_hit_ratio": self.cache_hit_ratio,
+            "batch_size_mean": self.batch_size_mean,
+            "batched_request_ratio": self.batched_request_ratio,
             "execution_mode_breakdown": dict(self.execution_mode_breakdown),
         }
 
