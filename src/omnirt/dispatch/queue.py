@@ -62,3 +62,6 @@ class JobQueue:
 
     def task_done(self) -> None:
         self._queue.task_done()
+
+    def qsize(self) -> int:
+        return int(self._queue.qsize())

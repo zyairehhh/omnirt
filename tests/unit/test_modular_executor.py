@@ -48,15 +48,31 @@ class FakeComponentsManager:
         self.auto_cpu_offload_device = device
 
 
+class FakeAcceleratedComponent:
+    def __init__(self) -> None:
+        self.quantize_calls = []
+        self.casting_calls = []
+        self.tea_cache_calls = []
+
+    def quantize(self, *, mode=None, backend=None, config=None):
+        self.quantize_calls.append({"mode": mode, "backend": backend, "config": dict(config or {})})
+
+    def enable_layerwise_casting(self, *, storage_dtype=None, compute_dtype=None):
+        self.casting_calls.append({"storage_dtype": storage_dtype, "compute_dtype": compute_dtype})
+
+    def enable_teacache(self, *, ratio=None, interval=None, enabled=None):
+        self.tea_cache_calls.append({"ratio": ratio, "interval": interval, "enabled": enabled})
+
+
 class FakeModularPipeline:
     created = []
 
     def __init__(self, source: str, *, components_manager=None) -> None:
         self.source = source
         self.components_manager = components_manager
-        self.text_encoder = object()
-        self.transformer = object()
-        self.vae = object()
+        self.text_encoder = FakeAcceleratedComponent()
+        self.transformer = FakeAcceleratedComponent()
+        self.vae = FakeAcceleratedComponent()
         self.loaded_components_kwargs = None
         self.calls = []
         self.encode_prompt_calls = []
@@ -198,3 +214,32 @@ def test_modular_executor_passes_device_map_and_skips_to_device(monkeypatch) -> 
 
     assert FakeModularPipeline.created[-1].source == "dummy/modular"
     assert runtime.to_device_calls == []
+
+
+def test_modular_executor_applies_runtime_acceleration(monkeypatch) -> None:
+    monkeypatch.setattr(ModularExecutor, "_diffusers_api", lambda self: (FakeModularPipeline, FakeComponentsManager))
+
+    executor = ModularExecutor()
+    runtime = FakeRuntime()
+    spec = _spec(task="text2image", artifact_kind="image")
+
+    executor.load(
+        runtime=runtime,
+        model_spec=spec,
+        config={
+            "dtype": "fp16",
+            "quantization": "int8",
+            "quantization_backend": "torchao",
+            "enable_layerwise_casting": True,
+            "layerwise_casting_compute_dtype": "bf16",
+            "enable_tea_cache": True,
+            "tea_cache_ratio": 0.3,
+            "tea_cache_interval": 2,
+        },
+        adapters=None,
+    )
+
+    pipeline = FakeModularPipeline.created[-1]
+    assert pipeline.transformer.quantize_calls[0]["mode"] == "int8"
+    assert pipeline.transformer.casting_calls[0]["compute_dtype"] == "bf16"
+    assert pipeline.transformer.tea_cache_calls[0]["interval"] == 2

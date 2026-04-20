@@ -16,6 +16,8 @@ class JobRecord:
     state: str = "queued"
     result: Any = None
     error: Optional[str] = None
+    trace_id: Optional[str] = None
+    worker_id: Optional[str] = None
     enqueued_at_ms: int = 0
     started_at_ms: Optional[int] = None
     finished_at_ms: Optional[int] = None
@@ -35,6 +37,8 @@ class JobRecord:
             "backend": self.backend,
             "request": self.request.to_dict(),
             "error": self.error,
+            "trace_id": self.trace_id,
+            "worker_id": self.worker_id,
             "enqueued_at_ms": self.enqueued_at_ms,
             "started_at_ms": self.started_at_ms,
             "finished_at_ms": self.finished_at_ms,

@@ -157,6 +157,35 @@ def validate_request(request: GenerateRequest, *, backend: Optional[str] = None)
     group_offload_type = result.resolved_config.get("group_offload_type")
     if group_offload_type is not None and group_offload_type not in {"block_level", "leaf_level"}:
         result.add_error("group_offload_type must be either 'block_level' or 'leaf_level'.")
+    quantization = result.resolved_config.get("quantization")
+    if quantization is not None and quantization not in {"int8", "fp8", "nf4"}:
+        result.add_error("quantization must be one of 'int8', 'fp8', or 'nf4'.")
+    quantization_backend = result.resolved_config.get("quantization_backend")
+    if quantization_backend is not None and quantization_backend not in {"auto", "torchao", "bitsandbytes"}:
+        result.add_error("quantization_backend must be one of 'auto', 'torchao', or 'bitsandbytes'.")
+    cache_mode = result.resolved_config.get("cache")
+    if cache_mode is not None and cache_mode not in {"tea_cache"}:
+        result.add_error("cache must be 'tea_cache' when provided.")
+    for config_key in ("tea_cache_ratio",):
+        value = result.resolved_config.get(config_key)
+        if value is None:
+            continue
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            result.add_error(f"{config_key} must be a non-negative float.")
+        else:
+            if numeric < 0:
+                result.add_error(f"{config_key} must be a non-negative float.")
+    tea_cache_interval = result.resolved_config.get("tea_cache_interval")
+    if tea_cache_interval is not None:
+        try:
+            interval_value = int(tea_cache_interval)
+        except (TypeError, ValueError):
+            result.add_error("tea_cache_interval must be an integer greater than or equal to 1.")
+        else:
+            if interval_value < 1:
+                result.add_error("tea_cache_interval must be an integer greater than or equal to 1.")
 
     repo_root = result.resolved_config.get("repo_path")
     repo_root_path = Path(str(repo_root)).expanduser() if isinstance(repo_root, str) and repo_root else None

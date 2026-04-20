@@ -14,7 +14,13 @@ from omnirt.core.types import Artifact, DependencyUnavailableError, GenerateResu
 from omnirt.executors.base import Executor
 from omnirt.executors.events import emit_event
 from omnirt.launcher import resolve_config_device_map
-from omnirt.middleware.backend_wrapper import BackendWrapperMiddleware
+from omnirt.middleware import (
+    BackendWrapperMiddleware,
+    QuantizationMiddleware,
+    TeaCacheMiddleware,
+    apply_quantization_runtime,
+    apply_tea_cache_runtime,
+)
 from omnirt.telemetry.report import build_run_report
 
 
@@ -73,13 +79,15 @@ class ModularExecutor(Executor):
             )
             self.pipeline.load_components(**load_components_kwargs)
         self.pipeline = runtime.prepare_pipeline(self.pipeline, model_spec=model_spec, config=self.config)
+        apply_quantization_runtime(self.pipeline, config=self.config, component_tags=())
+        apply_tea_cache_runtime(self.pipeline, config=self.config, component_tags=())
 
         self.components = {}
         for name in self._COMPONENT_ATTRS:
             component = getattr(self.pipeline, name, None)
             if component is not None:
                 self.components[name] = component
-        self.apply_middleware([BackendWrapperMiddleware()])
+        self.apply_middleware([QuantizationMiddleware(), TeaCacheMiddleware(), BackendWrapperMiddleware()])
         for name, component in self.components.items():
             setattr(self.pipeline, name, component)
         self._load_backend_timeline = list(getattr(runtime, "backend_timeline", []))

@@ -218,6 +218,87 @@ def test_validate_request_resolves_repo_relative_flashtalk_paths(tmp_path) -> No
     clear_registry()
 
 
+def test_validate_request_rejects_invalid_quantization_backend() -> None:
+    clear_registry()
+
+    @register_model(
+        id="dummy-image",
+        task="text2image",
+        capabilities=ModelCapabilities(required_inputs=("prompt",)),
+    )
+    class DummyPipeline:
+        pass
+
+    validation = validate_request(
+        GenerateRequest(
+            task="text2image",
+            model="dummy-image",
+            backend="cpu-stub",
+            inputs={"prompt": "hello"},
+            config={"quantization_backend": "mystery"},
+        )
+    )
+
+    assert validation.ok is False
+    assert "quantization_backend" in validation.format_errors()
+
+    clear_registry()
+
+
+def test_validate_request_rejects_invalid_tea_cache_interval() -> None:
+    clear_registry()
+
+    @register_model(
+        id="dummy-image",
+        task="text2image",
+        capabilities=ModelCapabilities(required_inputs=("prompt",)),
+    )
+    class DummyPipeline:
+        pass
+
+    validation = validate_request(
+        GenerateRequest(
+            task="text2image",
+            model="dummy-image",
+            backend="cpu-stub",
+            inputs={"prompt": "hello"},
+            config={"enable_tea_cache": True, "tea_cache_interval": 0},
+        )
+    )
+
+    assert validation.ok is False
+    assert "tea_cache_interval" in validation.format_errors()
+
+    clear_registry()
+
+
+def test_validate_request_rejects_invalid_cache_mode() -> None:
+    clear_registry()
+
+    @register_model(
+        id="dummy-image",
+        task="text2image",
+        capabilities=ModelCapabilities(required_inputs=("prompt",)),
+    )
+    class DummyPipeline:
+        pass
+
+    validation = validate_request(
+        GenerateRequest(
+            task="text2image",
+            model="dummy-image",
+            backend="cpu-stub",
+            inputs={"prompt": "hello"},
+            config={"cache": "mystery"},
+        )
+    )
+
+    assert validation.ok is False
+    assert "cache must be 'tea_cache'" in validation.format_errors()
+
+    clear_registry()
+
+
 def test_validate_request_rejects_multiple_offload_flags() -> None:
     clear_registry()
 

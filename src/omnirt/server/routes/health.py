@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
+from fastapi.responses import PlainTextResponse
 
 router = APIRouter()
 
@@ -16,3 +17,8 @@ async def healthz():
 async def readyz(request: Request):
     engine = request.app.state.engine
     return {"ok": bool(engine.is_ready())}
+
+
+@router.get("/metrics")
+async def metrics(request: Request):
+    return PlainTextResponse(request.app.state.metrics.render(), media_type="text/plain; version=0.0.4")

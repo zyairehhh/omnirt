@@ -48,8 +48,32 @@ _PRIMARY_TASK_PRIORITY: Tuple[str, ...] = (
     "audio2video",
 )
 _EXECUTION_MODE_RUNTIME_CONFIG: Dict[str, Tuple[str, ...]] = {
-    "legacy_call": ("device_map", "devices"),
-    "modular": ("device_map", "devices"),
+    "legacy_call": (
+        "device_map",
+        "devices",
+        "quantization",
+        "quantization_backend",
+        "enable_layerwise_casting",
+        "layerwise_casting_storage_dtype",
+        "layerwise_casting_compute_dtype",
+        "cache",
+        "enable_tea_cache",
+        "tea_cache_ratio",
+        "tea_cache_interval",
+    ),
+    "modular": (
+        "device_map",
+        "devices",
+        "quantization",
+        "quantization_backend",
+        "enable_layerwise_casting",
+        "layerwise_casting_storage_dtype",
+        "layerwise_casting_compute_dtype",
+        "cache",
+        "enable_tea_cache",
+        "tea_cache_ratio",
+        "tea_cache_interval",
+    ),
 }
 
 

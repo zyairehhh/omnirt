@@ -8,7 +8,7 @@ from typing import Any
 from omnirt.core.types import is_generate_result_like
 from omnirt.executors.base import Executor
 from omnirt.executors.events import emit_event
-from omnirt.middleware.backend_wrapper import BackendWrapperMiddleware
+from omnirt.middleware import BackendWrapperMiddleware, QuantizationMiddleware, TeaCacheMiddleware
 
 
 class LegacyCallExecutor(Executor):
@@ -27,7 +27,7 @@ class LegacyCallExecutor(Executor):
         self.adapters = list(adapters or [])
         self.pipeline = model_spec.pipeline_cls(runtime=runtime, model_spec=model_spec, adapters=self.adapters)
         self.components = dict(getattr(self.pipeline, "components", {}) or {})
-        self.apply_middleware([BackendWrapperMiddleware()])
+        self.apply_middleware([QuantizationMiddleware(), TeaCacheMiddleware(), BackendWrapperMiddleware()])
 
     def run(self, request, *, event_callback=None, cache=None) -> Any:
         emit_event(event_callback, "stage_start", "legacy_call", data={"model": request.model})

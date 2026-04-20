@@ -38,6 +38,8 @@ class FlashTalkLaunchConfig:
     python_executable: str
     launcher: str
     nproc_per_node: int
+    num_processes: int
+    accelerate_executable: Optional[str]
     visible_devices: Optional[str]
     ascend_env_script: Optional[str]
     t5_quant: Optional[str]
@@ -69,6 +71,8 @@ class FlashTalkLaunchConfig:
             "python_executable",
             "launcher",
             "nproc_per_node",
+            "num_processes",
+            "accelerate_executable",
             "visible_devices",
             "ascend_env_script",
             "t5_quant",
@@ -135,9 +139,11 @@ class FlashTalkPipeline(BasePipeline):
         save_file = output_dir / f"{req.model}-{seed}-{int(time.time() * 1000)}.mp4"
         launcher = str(req.config.get("launcher", "torchrun"))
         nproc_per_node = int(req.config.get("nproc_per_node", 8))
+        num_processes = int(req.config.get("num_processes", nproc_per_node))
         t5_quant_dir_value = req.config.get("t5_quant_dir")
         t5_quant_dir = self._resolve_repo_relative_path(repo_path, str(t5_quant_dir_value)) if t5_quant_dir_value else None
         python_executable = str(req.config.get("python_executable") or resolve_flashtalk_python())
+        accelerate_executable = self._normalize_optional_string(req.config.get("accelerate_executable"))
         ascend_env_script = self._normalize_optional_string(req.config.get("ascend_env_script", DEFAULT_FLASHTALK_ASCEND_ENV_SCRIPT))
         if python_executable and not Path(python_executable).expanduser().exists():
             raise FileNotFoundError(f"FlashTalk python_executable not found: {python_executable}")
@@ -160,6 +166,8 @@ class FlashTalkPipeline(BasePipeline):
             python_executable=python_executable,
             launcher=launcher,
             nproc_per_node=nproc_per_node,
+            num_processes=num_processes,
+            accelerate_executable=accelerate_executable,
             visible_devices=self._normalize_optional_string(req.config.get("visible_devices")),
             ascend_env_script=ascend_env_script,
             t5_quant=self._normalize_optional_string(req.config.get("t5_quant")),
@@ -216,7 +224,11 @@ class FlashTalkPipeline(BasePipeline):
             latents.script_path,
             python_executable=latents.python_executable,
             script_args=script_args,
-            config={"nproc_per_node": latents.nproc_per_node},
+            config={
+                "nproc_per_node": latents.nproc_per_node,
+                "num_processes": latents.num_processes,
+                "accelerate_executable": latents.accelerate_executable,
+            },
         )
         try:
             completed = launcher.launch(
@@ -273,6 +285,8 @@ class FlashTalkPipeline(BasePipeline):
             "python_executable": latents.python_executable,
             "launcher": latents.launcher,
             "nproc_per_node": latents.nproc_per_node,
+            "num_processes": latents.num_processes,
+            "accelerate_executable": latents.accelerate_executable,
             "visible_devices": latents.visible_devices,
             "ascend_env_script": latents.ascend_env_script,
             "t5_quant": latents.t5_quant,

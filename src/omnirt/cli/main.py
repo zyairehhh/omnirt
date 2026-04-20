@@ -47,7 +47,11 @@ def add_request_arguments(parser: argparse.ArgumentParser) -> None:
         help="Task to run.",
     )
     parser.add_argument("--model", help="Model registry id to execute.")
-    parser.add_argument("--backend", choices=["auto", "cuda", "ascend", "cpu-stub"], help="Override backend selection.")
+    parser.add_argument(
+        "--backend",
+        choices=["auto", "cuda", "ascend", "rocm", "xpu", "cpu-stub"],
+        help="Override backend selection.",
+    )
     parser.add_argument("--prompt", help="Prompt for image or video generation tasks.")
     parser.add_argument("--negative-prompt", help="Negative prompt for prompt-driven generation.")
     parser.add_argument("--image", help="Input image for image-guided generation.")
@@ -101,6 +105,19 @@ def add_request_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--wan-quant-exclude", help="Comma-separated Wan module denylist for FlashTalk quantization.")
     parser.add_argument("--device-map", help="Diffusers device placement policy such as balanced or unet:0,vae:1.")
     parser.add_argument("--devices", help="Comma-separated device list used to infer balanced placement, for example cuda:0,cuda:1.")
+    parser.add_argument("--cache", choices=["tea_cache"], help="Enable cache middleware, currently tea_cache.")
+    parser.add_argument("--quantization", choices=["int8", "fp8", "nf4"], help="Best-effort runtime quantization mode.")
+    parser.add_argument(
+        "--quantization-backend",
+        choices=["auto", "torchao", "bitsandbytes"],
+        help="Implementation hint for runtime quantization.",
+    )
+    parser.add_argument("--enable-layerwise-casting", action="store_true", help="Enable best-effort layerwise casting hooks.")
+    parser.add_argument("--layerwise-casting-storage-dtype", help="Storage dtype hint for layerwise casting.")
+    parser.add_argument("--layerwise-casting-compute-dtype", help="Compute dtype hint for layerwise casting.")
+    parser.add_argument("--enable-tea-cache", action="store_true", help="Enable best-effort TeaCache hooks when supported.")
+    parser.add_argument("--tea-cache-ratio", type=float, help="TeaCache reuse ratio hint.")
+    parser.add_argument("--tea-cache-interval", type=int, help="TeaCache interval hint.")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -132,7 +149,7 @@ def build_parser() -> argparse.ArgumentParser:
     serve_parser.add_argument("--port", type=int, default=8000, help="TCP port to bind.")
     serve_parser.add_argument(
         "--backend",
-        choices=["auto", "cuda", "ascend", "cpu-stub"],
+        choices=["auto", "cuda", "ascend", "rocm", "xpu", "cpu-stub"],
         default="auto",
         help="Default backend for requests that omit backend.",
     )
@@ -266,6 +283,13 @@ def request_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser)
         "wan_quant_exclude",
         "device_map",
         "devices",
+        "cache",
+        "quantization",
+        "quantization_backend",
+        "layerwise_casting_storage_dtype",
+        "layerwise_casting_compute_dtype",
+        "tea_cache_ratio",
+        "tea_cache_interval",
     ):
         value = getattr(args, field)
         if value is not None:
@@ -274,6 +298,10 @@ def request_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser)
         config["model_path"] = args.model_path
     if getattr(args, "cpu_offload", False):
         config["cpu_offload"] = True
+    if getattr(args, "enable_layerwise_casting", False):
+        config["enable_layerwise_casting"] = True
+    if getattr(args, "enable_tea_cache", False):
+        config["enable_tea_cache"] = True
 
     return GenerateRequest(
         task=args.task,

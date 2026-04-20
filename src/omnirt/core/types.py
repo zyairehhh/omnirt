@@ -148,6 +148,8 @@ class RunReport:
     model: str
     backend: str
     job_id: Optional[str] = None
+    trace_id: Optional[str] = None
+    worker_id: Optional[str] = None
     enqueued_at_ms: Optional[int] = None
     queue_wait_ms: Optional[float] = None
     execution_mode: Optional[str] = None
@@ -163,7 +165,7 @@ class RunReport:
     batch_size: int = 1
     batch_group_id: Optional[str] = None
     stream_events: List[StageEventRecord] = field(default_factory=list)
-    schema_version: str = "0.4.0"
+    schema_version: str = "1.0.0"
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -176,6 +178,8 @@ class RunReport:
             model=payload["model"],
             backend=payload["backend"],
             job_id=payload.get("job_id"),
+            trace_id=payload.get("trace_id"),
+            worker_id=payload.get("worker_id"),
             enqueued_at_ms=payload.get("enqueued_at_ms"),
             queue_wait_ms=payload.get("queue_wait_ms"),
             execution_mode=payload.get("execution_mode"),

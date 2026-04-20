@@ -47,7 +47,7 @@ def test_generate_result_round_trip() -> None:
 
     assert GenerateResult.from_dict(result.to_dict()) == result
     assert result.metadata.batch_size == 1
-    assert result.metadata.schema_version == "0.4.0"
+    assert result.metadata.schema_version == "1.0.0"
 
 
 def test_generate_request_supports_text2video() -> None:

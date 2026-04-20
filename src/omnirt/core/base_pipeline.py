@@ -14,6 +14,12 @@ from omnirt.core.adapters import AdapterManager
 from omnirt.core.registry import ModelSpec
 from omnirt.core.types import Artifact, GenerateRequest, GenerateResult, InsufficientMemoryError
 from omnirt.launcher import DEVICE_MAP_CONFIG_KEYS, resolve_config_device_map
+from omnirt.middleware import (
+    QUANTIZATION_CONFIG_KEYS,
+    TEA_CACHE_CONFIG_KEYS,
+    apply_quantization_runtime,
+    apply_tea_cache_runtime,
+)
 from omnirt.telemetry.log import get_logger
 from omnirt.telemetry.report import build_run_report
 
@@ -28,9 +34,9 @@ LEGACY_OPTIMIZATION_CONFIG_KEYS = (
     "enable_vae_tiling",
     "channels_last",
     "fuse_qkv",
-)
+ ) + QUANTIZATION_CONFIG_KEYS + TEA_CACHE_CONFIG_KEYS
 
-RESULT_CACHE_CONFIG_KEYS = ("use_result_cache",)
+RESULT_CACHE_CONFIG_KEYS = ("use_result_cache",) + QUANTIZATION_CONFIG_KEYS + TEA_CACHE_CONFIG_KEYS
 
 
 class BasePipeline(ABC):
@@ -176,6 +182,8 @@ class BasePipeline(ABC):
             self._apply_channels_last(pipeline)
         if config.get("fuse_qkv") and hasattr(pipeline, "fuse_qkv_projections"):
             pipeline.fuse_qkv_projections()
+        apply_quantization_runtime(pipeline, config=config)
+        apply_tea_cache_runtime(pipeline, config=config)
 
         if config.get("enable_model_cpu_offload") and hasattr(pipeline, "enable_model_cpu_offload"):
             pipeline.enable_model_cpu_offload()

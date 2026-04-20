@@ -178,7 +178,8 @@ def test_flashtalk_pipeline_supports_accelerate_launcher(tmp_path, monkeypatch) 
             "python_executable": str(python_executable),
             "ascend_env_script": "",
             "launcher": "accelerate",
-            "nproc_per_node": 2,
+            "num_processes": 2,
+            "accelerate_executable": "accelerate",
         },
     )
 

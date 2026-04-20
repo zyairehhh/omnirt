@@ -11,6 +11,7 @@ from omnirt.server.routes.generate import router as generate_router
 from omnirt.server.routes.health import router as health_router
 from omnirt.server.routes.jobs import router as jobs_router
 from omnirt.server.routes.openai import router as openai_router
+from omnirt.telemetry import PrometheusMetrics, TraceRecorder
 
 
 def create_app(
@@ -24,13 +25,19 @@ def create_app(
     api_key_file: str | None = None,
     model_aliases_path: str | None = None,
 ) -> FastAPI:
-    app = FastAPI(title="OmniRT", version="0.4.0")
+    app = FastAPI(title="OmniRT", version="1.0.0")
+    metrics = PrometheusMetrics()
+    tracer = TraceRecorder()
     app.state.engine = OmniEngine(
         max_concurrency=max_concurrency,
         pipeline_cache_size=pipeline_cache_size,
         batch_window_ms=batch_window_ms,
         max_batch_size=max_batch_size,
+        metrics=metrics,
+        tracer=tracer,
     )
+    app.state.metrics = metrics
+    app.state.tracer = tracer
     app.state.default_backend = default_backend
     app.state.default_request_config = dict(default_request_config or {})
     app.state.model_aliases = load_model_aliases(model_aliases_path)

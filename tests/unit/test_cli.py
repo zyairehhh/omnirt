@@ -263,6 +263,49 @@ def test_request_from_args_accepts_presets_and_scheduler() -> None:
     assert request.config["scheduler"] == "ddim"
 
 
+def test_request_from_args_accepts_quantization_and_tea_cache() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "generate",
+            "--task",
+            "text2image",
+            "--model",
+            "sd15",
+            "--prompt",
+            "hello",
+            "--cache",
+            "tea_cache",
+            "--quantization",
+            "int8",
+            "--quantization-backend",
+            "torchao",
+            "--enable-layerwise-casting",
+            "--layerwise-casting-storage-dtype",
+            "fp8_e4m3fn",
+            "--layerwise-casting-compute-dtype",
+            "bf16",
+            "--enable-tea-cache",
+            "--tea-cache-ratio",
+            "0.25",
+            "--tea-cache-interval",
+            "2",
+        ]
+    )
+
+    request = request_from_args(args, parser)
+
+    assert request.config["cache"] == "tea_cache"
+    assert request.config["quantization"] == "int8"
+    assert request.config["quantization_backend"] == "torchao"
+    assert request.config["enable_layerwise_casting"] is True
+    assert request.config["layerwise_casting_storage_dtype"] == "fp8_e4m3fn"
+    assert request.config["layerwise_casting_compute_dtype"] == "bf16"
+    assert request.config["enable_tea_cache"] is True
+    assert request.config["tea_cache_ratio"] == 0.25
+    assert request.config["tea_cache_interval"] == 2
+
+
 def test_request_from_args_accepts_device_placement_flags() -> None:
     parser = build_parser()
     args = parser.parse_args(
