@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from omnirt.backends.base import BackendRuntime
+from omnirt.backends.overrides import prepare_ascend_pipeline, register_ascend_overrides
 from omnirt.core.types import BackendUnavailableError, Capabilities
 
 
@@ -24,6 +25,7 @@ class AscendBackend(BackendRuntime):
         except ImportError:
             torch_npu = None
         self.torch_npu = torch_npu
+        register_ascend_overrides(self)
 
     def is_available(self) -> bool:
         return self._device_count() > 0
@@ -76,6 +78,9 @@ class AscendBackend(BackendRuntime):
                 sync()
             except Exception:
                 pass
+
+    def prepare_pipeline(self, pipeline: Any, *, model_spec: Any, config: Dict[str, Any]) -> Any:
+        return prepare_ascend_pipeline(self, pipeline, model_spec=model_spec, config=config)
 
     def _compile(self, module: Any, tag: str) -> Any:
         raise NotImplementedError(

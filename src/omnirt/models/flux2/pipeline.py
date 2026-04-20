@@ -6,6 +6,7 @@ from pathlib import Path
 import time
 from typing import Any, Dict, List, Optional
 
+from omnirt.backends.overrides import ASCEND_ACCELERATION_CONFIG_KEYS
 from omnirt.core.base_pipeline import BasePipeline
 from omnirt.core.registry import ModelCapabilities, register_model
 from omnirt.core.types import Artifact, DependencyUnavailableError, GenerateRequest
@@ -33,7 +34,8 @@ from omnirt.models.flux2.components import DEFAULT_FLUX2_DEV_MODEL_SOURCE
             "seed",
             "dtype",
             "output_dir",
-        ),
+        )
+        + ASCEND_ACCELERATION_CONFIG_KEYS,
         default_config={"scheduler": "native", "height": 1024, "width": 1024, "max_sequence_length": 512, "dtype": "bf16"},
         supported_schedulers=("native",),
         adapter_kinds=("lora",),
@@ -64,7 +66,8 @@ from omnirt.models.flux2.components import DEFAULT_FLUX2_DEV_MODEL_SOURCE
             "seed",
             "dtype",
             "output_dir",
-        ),
+        )
+        + ASCEND_ACCELERATION_CONFIG_KEYS,
         default_config={"scheduler": "native", "height": 1024, "width": 1024, "max_sequence_length": 512, "dtype": "bf16"},
         supported_schedulers=("native",),
         adapter_kinds=("lora",),
@@ -107,6 +110,7 @@ class Flux2Pipeline(BasePipeline):
             source=conditions["model_source"],
             torch_dtype=torch_dtype,
             scheduler_name=conditions["scheduler"],
+            config=req.config,
         )
         self._last_seed = seed
         return {
@@ -218,7 +222,7 @@ class Flux2Pipeline(BasePipeline):
             ) from exc
         return DiffusersFlux2Pipeline
 
-    def _load_pipeline(self, *, source: str, torch_dtype: Any, scheduler_name: str):
+    def _load_pipeline(self, *, source: str, torch_dtype: Any, scheduler_name: str, config: Dict[str, Any]):
         cache_key = self.pipeline_cache_key(
             source=source, torch_dtype=torch_dtype, scheduler_name=scheduler_name
         )
@@ -229,6 +233,7 @@ class Flux2Pipeline(BasePipeline):
         pipeline = pipeline_cls.from_pretrained(source, torch_dtype=torch_dtype)
         if scheduler_name != "native":
             raise ValueError(f"Unsupported Flux2 scheduler: {scheduler_name}")
+        pipeline = self.runtime.prepare_pipeline(pipeline, model_spec=self.model_spec, config=config)
         self._wrap_pipeline_modules(pipeline)
         pipeline = self.runtime.to_device(pipeline, dtype=torch_dtype)
         self._apply_adapters(pipeline)

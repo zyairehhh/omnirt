@@ -49,6 +49,16 @@ class BackendRuntime(ABC):
         Default is a no-op; CUDA/Ascend override for accurate stage timing.
         """
 
+    def prepare_pipeline(self, pipeline: Any, *, model_spec: Any, config: Dict[str, Any]) -> Any:
+        """Apply backend-specific pipeline preparation before module wrapping.
+
+        Backends may use this hook to register module overrides, patch attention
+        backends, or annotate pipelines with accelerator-specific metadata.
+        """
+
+        del model_spec, config
+        return pipeline
+
     def wrap_module(self, module: Any, tag: str) -> Any:
         attempts: List[BackendAttempt] = []
         wrapped: Any = None

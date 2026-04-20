@@ -8,6 +8,7 @@ from pathlib import Path
 import time
 from typing import Any, Dict, List, Optional
 
+from omnirt.backends.overrides import ASCEND_ACCELERATION_CONFIG_KEYS
 from omnirt.core.base_pipeline import BasePipeline
 from omnirt.core.registry import ModelCapabilities, register_model
 from omnirt.core.types import Artifact, DependencyUnavailableError, GenerateRequest
@@ -46,6 +47,7 @@ class GeneralistImagePipeline(BasePipeline):
             source=conditions["model_source"],
             torch_dtype=torch_dtype,
             scheduler_name=conditions["scheduler"],
+            config=req.config,
         )
         self._last_seed = seed
         return {
@@ -173,7 +175,7 @@ class GeneralistImagePipeline(BasePipeline):
         candidates = ", ".join(self._model_config().class_candidates)
         raise DependencyUnavailableError(f"diffusers does not provide any of the required classes: {candidates}")
 
-    def _load_pipeline(self, *, source: str, torch_dtype: Any, scheduler_name: str):
+    def _load_pipeline(self, *, source: str, torch_dtype: Any, scheduler_name: str, config: Dict[str, Any]):
         cache_key = self.pipeline_cache_key(source=source, torch_dtype=torch_dtype, scheduler_name=scheduler_name)
         if self._pipeline is not None and self._pipeline_key == cache_key:
             return self._pipeline
@@ -182,6 +184,7 @@ class GeneralistImagePipeline(BasePipeline):
         pipeline = pipeline_cls.from_pretrained(source, torch_dtype=torch_dtype)
         if scheduler_name != "native":
             raise ValueError(f"Unsupported scheduler for model {self.model_spec.id!r}: {scheduler_name}")
+        pipeline = self.runtime.prepare_pipeline(pipeline, model_spec=self.model_spec, config=config)
         self._wrap_pipeline_modules(pipeline)
         pipeline = self.runtime.to_device(pipeline, dtype=torch_dtype)
         self._apply_adapters(pipeline)
@@ -263,7 +266,8 @@ for model_id, model_config in MODEL_CONFIGS.items():
                 "dtype",
                 "output_dir",
                 "max_sequence_length",
-            ),
+            )
+            + ASCEND_ACCELERATION_CONFIG_KEYS,
             default_config=model_config.default_config,
             supported_schedulers=("native",),
             adapter_kinds=("lora",),

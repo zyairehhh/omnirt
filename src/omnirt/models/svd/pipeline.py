@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from omnirt.backends.overrides import ASCEND_ACCELERATION_CONFIG_KEYS
 from omnirt.core.base_pipeline import BasePipeline
 from omnirt.core.media import load_image, save_video_frames
 from omnirt.core.registry import ModelCapabilities, register_model
@@ -34,7 +35,8 @@ from omnirt.schedulers import build_scheduler
             "seed",
             "dtype",
             "output_dir",
-        ),
+        )
+        + ASCEND_ACCELERATION_CONFIG_KEYS,
         default_config={
             "scheduler": "euler-discrete",
             "frame_bucket": 127,
@@ -69,7 +71,8 @@ from omnirt.schedulers import build_scheduler
             "seed",
             "dtype",
             "output_dir",
-        ),
+        )
+        + ASCEND_ACCELERATION_CONFIG_KEYS,
         default_config={
             "scheduler": "euler-discrete",
             "frame_bucket": 127,
@@ -253,6 +256,7 @@ class SVDPipeline(BasePipeline):
         if getattr(pipeline, "scheduler", None) is not None and hasattr(pipeline.scheduler, "config"):
             scheduler_config["scheduler_config"] = pipeline.scheduler.config
         pipeline.scheduler = build_scheduler(scheduler_config)
+        pipeline = self.runtime.prepare_pipeline(pipeline, model_spec=self.model_spec, config=config)
         self._wrap_pipeline_modules(pipeline)
         pipeline = self.runtime.to_device(pipeline, dtype=torch_dtype)
         self._apply_adapters(pipeline)

@@ -30,6 +30,23 @@ class FakeCudaRuntime(BackendRuntime):
         return {"peak_mb": 4.0}
 
 
+class RecordingCudaRuntime(FakeCudaRuntime):
+    def __init__(self) -> None:
+        super().__init__()
+        self.prepare_calls = []
+
+    def prepare_pipeline(self, pipeline, *, model_spec, config):
+        self.prepare_calls.append(
+            {
+                "pipeline": pipeline,
+                "model_id": model_spec.id,
+                "task": model_spec.task,
+                "config": dict(config),
+            }
+        )
+        return pipeline
+
+
 class FakeDiffusersPipeline:
     created = []
 
@@ -223,6 +240,41 @@ def test_sd15_pipeline_raises_clear_error_without_diffusers(tmp_path) -> None:
 
     with pytest.raises(DependencyUnavailableError):
         pipeline.run(request)
+
+
+def test_sd15_pipeline_calls_runtime_prepare_pipeline(tmp_path, monkeypatch) -> None:
+    _reset_created()
+    runtime = RecordingCudaRuntime()
+    monkeypatch.setattr(SD15Pipeline, "_diffusers_pipeline_cls", lambda self: FakeDiffusersPipeline)
+    monkeypatch.setattr("omnirt.models.sd15.pipeline.build_scheduler", lambda config: {"name": "euler"})
+
+    request = GenerateRequest(
+        task="text2image",
+        model="sd15",
+        backend="ascend",
+        inputs={"prompt": "a mountain at dawn"},
+        config={
+            "output_dir": str(tmp_path),
+            "ascend_attention_backend": "npu-fa",
+            "ascend_dit_cache": True,
+        },
+    )
+    pipeline = SD15Pipeline(runtime=runtime, model_spec=build_model_spec())
+
+    pipeline.run(request)
+
+    assert runtime.prepare_calls == [
+        {
+            "pipeline": FakeDiffusersPipeline.created[-1],
+            "model_id": "sd15",
+            "task": "text2image",
+            "config": {
+                "output_dir": str(tmp_path),
+                "ascend_attention_backend": "npu-fa",
+                "ascend_dit_cache": True,
+            },
+        }
+    ]
 
 
 def test_sd15_model_is_registered() -> None:

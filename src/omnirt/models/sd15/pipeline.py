@@ -7,6 +7,7 @@ from pathlib import Path
 import time
 from typing import Any, Dict, List, Optional
 
+from omnirt.backends.overrides import ASCEND_ACCELERATION_CONFIG_KEYS
 from omnirt.core.base_pipeline import BasePipeline
 from omnirt.core.registry import ModelCapabilities, register_model
 from omnirt.core.types import Artifact, DependencyUnavailableError, GenerateRequest
@@ -33,7 +34,8 @@ from omnirt.schedulers import build_scheduler
             "seed",
             "dtype",
             "output_dir",
-        ),
+        )
+        + ASCEND_ACCELERATION_CONFIG_KEYS,
         default_config={"scheduler": "euler-discrete", "height": 512, "width": 512, "dtype": "fp16"},
         supported_schedulers=("euler-discrete", "ddim", "dpm-solver", "euler-ancestral"),
         adapter_kinds=("lora",),
@@ -62,7 +64,8 @@ from omnirt.schedulers import build_scheduler
             "seed",
             "dtype",
             "output_dir",
-        ),
+        )
+        + ASCEND_ACCELERATION_CONFIG_KEYS,
         default_config={"scheduler": "euler-discrete", "height": 768, "width": 768, "dtype": "fp16"},
         supported_schedulers=("euler-discrete", "ddim", "dpm-solver", "euler-ancestral"),
         adapter_kinds=("lora",),
@@ -238,6 +241,7 @@ class SD15Pipeline(BasePipeline):
         if getattr(pipeline, "scheduler", None) is not None and hasattr(pipeline.scheduler, "config"):
             scheduler_config["scheduler_config"] = pipeline.scheduler.config
         pipeline.scheduler = build_scheduler(scheduler_config)
+        pipeline = self.runtime.prepare_pipeline(pipeline, model_spec=self.model_spec, config=config)
         self._wrap_pipeline_modules(pipeline)
         pipeline = self.runtime.to_device(pipeline, dtype=torch_dtype)
         self._apply_adapters(pipeline)

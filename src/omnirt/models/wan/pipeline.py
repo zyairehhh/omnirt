@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from omnirt.backends.overrides import ASCEND_ACCELERATION_CONFIG_KEYS
 from omnirt.core.base_pipeline import BasePipeline
 from omnirt.core.media import load_image, save_video_frames
 from omnirt.core.registry import ModelCapabilities, register_model
@@ -36,7 +37,8 @@ from omnirt.models.wan.components import (
             "seed",
             "dtype",
             "output_dir",
-        ),
+        )
+        + ASCEND_ACCELERATION_CONFIG_KEYS,
         default_config={"scheduler": "native", "num_inference_steps": 50, "guidance_scale": 5.0, "dtype": "bf16"},
         supported_schedulers=("native",),
         adapter_kinds=("lora",),
@@ -64,7 +66,8 @@ from omnirt.models.wan.components import (
             "seed",
             "dtype",
             "output_dir",
-        ),
+        )
+        + ASCEND_ACCELERATION_CONFIG_KEYS,
         default_config={"scheduler": "native", "num_inference_steps": 40, "guidance_scale": 5.0, "dtype": "bf16"},
         supported_schedulers=("native",),
         adapter_kinds=("lora",),
@@ -92,7 +95,8 @@ from omnirt.models.wan.components import (
             "seed",
             "dtype",
             "output_dir",
-        ),
+        )
+        + ASCEND_ACCELERATION_CONFIG_KEYS,
         default_config={"scheduler": "native", "num_inference_steps": 40, "guidance_scale": 5.0, "dtype": "bf16"},
         supported_schedulers=("native",),
         adapter_kinds=("lora",),
@@ -120,7 +124,8 @@ from omnirt.models.wan.components import (
             "seed",
             "dtype",
             "output_dir",
-        ),
+        )
+        + ASCEND_ACCELERATION_CONFIG_KEYS,
         default_config={"scheduler": "native", "num_inference_steps": 50, "guidance_scale": 5.0, "dtype": "bf16"},
         supported_schedulers=("native",),
         adapter_kinds=("lora",),
@@ -172,6 +177,7 @@ class WanPipeline(BasePipeline):
             source=conditions["model_source"],
             torch_dtype=torch_dtype,
             scheduler_name=conditions["scheduler"],
+            config=req.config,
         )
         self._last_seed = seed
         self._last_fps = conditions["fps"]
@@ -290,7 +296,7 @@ class WanPipeline(BasePipeline):
             ) from exc
         return PipelineCls
 
-    def _load_pipeline(self, *, source: str, torch_dtype: Any, scheduler_name: str):
+    def _load_pipeline(self, *, source: str, torch_dtype: Any, scheduler_name: str, config: Dict[str, Any]):
         cache_key = self.pipeline_cache_key(
             source=source, torch_dtype=torch_dtype, scheduler_name=scheduler_name
         )
@@ -301,6 +307,7 @@ class WanPipeline(BasePipeline):
         pipeline = pipeline_cls.from_pretrained(source, torch_dtype=torch_dtype)
         if scheduler_name != "native":
             raise ValueError(f"Unsupported Wan scheduler: {scheduler_name}")
+        pipeline = self.runtime.prepare_pipeline(pipeline, model_spec=self.model_spec, config=config)
         self._wrap_pipeline_modules(pipeline)
         pipeline = self.runtime.to_device(pipeline, dtype=torch_dtype)
         self._apply_adapters(pipeline)
