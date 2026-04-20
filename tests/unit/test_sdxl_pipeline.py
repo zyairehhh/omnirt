@@ -151,6 +151,9 @@ def test_sdxl_pipeline_raises_clear_error_without_diffusers(tmp_path) -> None:
         config={"output_dir": str(tmp_path)},
     )
     pipeline = SDXLPipeline(runtime=FakeCudaRuntime(), model_spec=build_model_spec())
+    pipeline._diffusers_pipeline_cls = lambda: (_ for _ in ()).throw(
+        DependencyUnavailableError("diffusers is required for SDXL execution.")
+    )
 
     with pytest.raises(DependencyUnavailableError):
         pipeline.run(request)

@@ -45,21 +45,44 @@ class BackendRuntime(ABC):
 
     def wrap_module(self, module: Any, tag: str) -> Any:
         attempts: List[BackendAttempt] = []
+        wrapped: Any = None
 
         try:
             compiled = self._compile(module, tag)
-            attempts.append(BackendAttempt(level="compile", ok=True))
+            attempts.append(BackendAttempt(level="compile", ok=True, selected=True))
             wrapped = compiled
         except Exception as exc:
             attempts.append(BackendAttempt(level="compile", ok=False, reason=str(exc)))
-            override = self.get_override(tag)
+
+        override = self.get_override(tag)
+        if wrapped is None:
             if override is not None:
-                attempts.append(BackendAttempt(level="kernel_override", ok=True))
+                attempts.append(BackendAttempt(level="kernel_override", ok=True, selected=True))
                 wrapped = override
             else:
-                attempts.append(BackendAttempt(level="kernel_override", ok=False, reason="no override registered"))
-                attempts.append(BackendAttempt(level="eager", ok=True))
-                wrapped = module
+                attempts.append(
+                    BackendAttempt(level="kernel_override", ok=False, reason="no override registered")
+                )
+        else:
+            skip_reason = (
+                "skipped: compile selected"
+                if override is None
+                else "skipped: compile selected; override registered but unused"
+            )
+            attempts.append(BackendAttempt(level="kernel_override", ok=False, reason=skip_reason))
+
+        if wrapped is None:
+            attempts.append(BackendAttempt(level="eager", ok=True, selected=True))
+            wrapped = module
+        else:
+            selected_level = next((a.level for a in attempts if a.selected), "compile")
+            attempts.append(
+                BackendAttempt(
+                    level="eager",
+                    ok=False,
+                    reason=f"skipped: {selected_level} selected",
+                )
+            )
 
         self.backend_timeline.append(BackendTimelineEntry(module=tag, attempts=attempts))
         return wrapped

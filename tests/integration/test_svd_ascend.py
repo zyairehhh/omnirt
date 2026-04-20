@@ -1,26 +1,13 @@
-import importlib.util
-import os
-
 from PIL import Image
 
+from tests.integration.conftest import require_local_model_dir, require_module
 from omnirt.api import generate
 
 
 def test_svd_ascend_smoke(tmp_path) -> None:
-    if not importlib.util.find_spec("torch_npu"):
-        import pytest
-
-        pytest.skip("torch_npu is unavailable")
-    if not importlib.util.find_spec("diffusers"):
-        import pytest
-
-        pytest.skip("diffusers is unavailable")
-
-    model_source = os.getenv("OMNIRT_SVD_MODEL_SOURCE")
-    if not model_source:
-        import pytest
-
-        pytest.skip("OMNIRT_SVD_MODEL_SOURCE is not set")
+    require_module("torch_npu", "torch_npu is unavailable")
+    require_module("diffusers", "diffusers is unavailable")
+    model_source = require_local_model_dir("OMNIRT_SVD_XT_MODEL_SOURCE")
 
     image_path = tmp_path / "input.png"
     Image.new("RGB", (1024, 576), color="teal").save(image_path)

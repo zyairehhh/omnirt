@@ -25,11 +25,11 @@ dev = [
   "pytest>=8.0",
 ]
 runtime = [
-  "diffusers>=0.27",
+  "diffusers>=0.37.1",
   "huggingface_hub>=0.20",
   "safetensors>=0.4",
   "torch>=2.1",
-  "transformers>=4.36",
+  "transformers>=4.51",
 ]
 
 [project.scripts]

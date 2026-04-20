@@ -121,6 +121,33 @@ def test_request_from_args_builds_image2video_request() -> None:
     assert request.config["frame_bucket"] == 96
 
 
+def test_request_from_args_builds_text2video_request() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "generate",
+            "--task",
+            "text2video",
+            "--model",
+            "wan2.2-t2v-14b",
+            "--prompt",
+            "a neon train crossing snowy mountains",
+            "--num-frames",
+            "81",
+            "--fps",
+            "16",
+            "--guidance-scale",
+            "5.0",
+        ]
+    )
+
+    request = request_from_args(args, parser)
+
+    assert request.task == "text2video"
+    assert request.inputs["prompt"] == "a neon train crossing snowy mountains"
+    assert request.config["guidance_scale"] == 5.0
+
+
 def test_main_prints_clean_omnirt_errors(monkeypatch, capsys) -> None:
     from omnirt.core.types import BackendUnavailableError
 

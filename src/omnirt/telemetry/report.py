@@ -15,6 +15,7 @@ def build_run_report(
     timings: Dict[str, float],
     memory: Dict[str, float],
     backend_timeline: Iterable[BackendTimelineEntry],
+    config_resolved: Dict[str, object],
     artifacts: Iterable[Artifact],
     error: Optional[str],
 ) -> RunReport:
@@ -26,7 +27,7 @@ def build_run_report(
         timings=dict(timings),
         memory=dict(memory),
         backend_timeline=list(backend_timeline),
-        config_resolved=dict(request.config),
+        config_resolved=dict(config_resolved),
         artifacts=list(artifacts),
         error=error,
     )

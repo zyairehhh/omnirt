@@ -17,13 +17,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     generate_parser = subparsers.add_parser("generate", help="Run a generation request.")
     generate_parser.add_argument("--config", help="Path to a YAML or JSON request file.")
-    generate_parser.add_argument("--task", choices=["text2image", "image2video"], help="Task to run.")
+    generate_parser.add_argument("--task", choices=["text2image", "text2video", "image2video"], help="Task to run.")
     generate_parser.add_argument("--model", help="Model registry id to execute.")
     generate_parser.add_argument("--backend", choices=["auto", "cuda", "ascend"], help="Override backend selection.")
-    generate_parser.add_argument("--prompt", help="Prompt for text2image generation.")
-    generate_parser.add_argument("--negative-prompt", help="Negative prompt for text2image generation.")
+    generate_parser.add_argument("--prompt", help="Prompt for text2image, text2video, or prompt-guided image2video.")
+    generate_parser.add_argument("--negative-prompt", help="Negative prompt for prompt-driven generation.")
     generate_parser.add_argument("--image", help="Input image for image2video generation.")
-    generate_parser.add_argument("--num-frames", type=int, help="Frame count for image2video generation.")
+    generate_parser.add_argument("--num-frames", type=int, help="Frame count for text2video or image2video generation.")
     generate_parser.add_argument("--fps", type=int, help="Frames per second for exported video.")
     generate_parser.add_argument("--frame-bucket", type=int, help="Motion bucket hint for SVD image2video.")
     generate_parser.add_argument("--decode-chunk-size", type=int, help="Decode chunk size for video generation.")
@@ -53,9 +53,9 @@ def request_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser)
         parser.error("either --config or both --task and --model are required")
 
     inputs = {}
-    if args.task == "text2image":
+    if args.task in {"text2image", "text2video"}:
         if not args.prompt:
-            parser.error("--prompt is required for --task text2image")
+            parser.error(f"--prompt is required for --task {args.task}")
         inputs["prompt"] = args.prompt
         if args.negative_prompt:
             inputs["negative_prompt"] = args.negative_prompt
@@ -63,6 +63,10 @@ def request_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser)
         if not args.image:
             parser.error("--image is required for --task image2video")
         inputs["image"] = args.image
+        if args.prompt:
+            inputs["prompt"] = args.prompt
+        if args.negative_prompt:
+            inputs["negative_prompt"] = args.negative_prompt
         if args.num_frames is not None:
             inputs["num_frames"] = args.num_frames
         if args.fps is not None:

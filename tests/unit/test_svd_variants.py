@@ -2,11 +2,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from PIL import Image
-import pytest
 
 from omnirt.backends.base import BackendRuntime
-from omnirt.core.registry import ModelSpec
-from omnirt.core.types import DependencyUnavailableError, GenerateRequest
+from omnirt.core.registry import ModelSpec, get_model
+from omnirt.core.types import GenerateRequest
+from omnirt.models import ensure_registered
+from omnirt.models.svd.components import DEFAULT_SVD_MODEL_SOURCE
 from omnirt.models.svd.pipeline import SVDPipeline
 
 
@@ -66,17 +67,28 @@ class FakeSVDDiffusersPipeline:
         return SimpleNamespace(frames=[frames])
 
 
-def build_model_spec() -> ModelSpec:
+def build_model_spec(model_id: str) -> ModelSpec:
     return ModelSpec(
-        id="svd-xt",
+        id=model_id,
         task="image2video",
         pipeline_cls=SVDPipeline,
         default_backend="auto",
-        resource_hint={"min_vram_gb": 14, "dtype": "fp16"},
+        resource_hint={"min_vram_gb": 12, "dtype": "fp16"},
     )
 
 
-def test_svd_pipeline_exports_mp4(tmp_path, monkeypatch) -> None:
+def test_base_svd_model_is_registered() -> None:
+    ensure_registered()
+
+    spec = get_model("svd")
+
+    assert spec.id == "svd"
+    assert spec.task == "image2video"
+    assert spec.pipeline_cls.__name__ == "SVDPipeline"
+    assert spec.pipeline_cls.__module__ == "omnirt.models.svd.pipeline"
+
+
+def test_svd_base_uses_base_defaults(tmp_path, monkeypatch) -> None:
     image_path = tmp_path / "input.png"
     Image.new("RGB", (48, 32), color="navy").save(image_path)
 
@@ -85,44 +97,19 @@ def test_svd_pipeline_exports_mp4(tmp_path, monkeypatch) -> None:
 
     request = GenerateRequest(
         task="image2video",
-        model="svd-xt",
-        backend="cuda",
-        inputs={"image": str(image_path), "num_frames": 4, "fps": 6},
-        config={"output_dir": str(tmp_path), "seed": 5},
-    )
-    pipeline = SVDPipeline(runtime=FakeVideoRuntime(), model_spec=build_model_spec())
-
-    result = pipeline.run(request)
-
-    assert len(result.outputs) == 1
-    output_path = Path(result.outputs[0].path)
-    assert output_path.exists()
-    assert output_path.suffix == ".mp4"
-    assert result.outputs[0].num_frames == 4
-    assert result.metadata.memory["peak_mb"] == 16.0
-    assert [entry.module for entry in result.metadata.backend_timeline] == ["image_encoder", "unet", "vae"]
-
-    created = FakeSVDDiffusersPipeline.created[-1]
-    assert created.calls[-1]["num_frames"] == 4
-    assert created.calls[-1]["fps"] == 6
-    assert created.scheduler == {"name": "euler"}
-
-
-def test_svd_pipeline_raises_clear_error_without_diffusers(tmp_path) -> None:
-    image_path = tmp_path / "input.png"
-    Image.new("RGB", (48, 32), color="navy").save(image_path)
-
-    request = GenerateRequest(
-        task="image2video",
-        model="svd-xt",
+        model="svd",
         backend="cuda",
         inputs={"image": str(image_path)},
         config={"output_dir": str(tmp_path)},
     )
-    pipeline = SVDPipeline(runtime=FakeVideoRuntime(), model_spec=build_model_spec())
-    pipeline._diffusers_pipeline_cls = lambda: (_ for _ in ()).throw(
-        DependencyUnavailableError("diffusers is required for SVD execution.")
-    )
+    pipeline = SVDPipeline(runtime=FakeVideoRuntime(), model_spec=build_model_spec("svd"))
 
-    with pytest.raises(DependencyUnavailableError):
-        pipeline.run(request)
+    result = pipeline.run(request)
+
+    created = FakeSVDDiffusersPipeline.created[-1]
+    output_path = Path(result.outputs[0].path)
+
+    assert output_path.exists()
+    assert created.source == DEFAULT_SVD_MODEL_SOURCE
+    assert created.calls[-1]["num_frames"] == 14
+    assert result.metadata.config_resolved["num_frames"] == 14

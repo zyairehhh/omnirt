@@ -32,7 +32,7 @@ Wrap backend-sensitive submodules through `self.runtime.wrap_module(...)`. This 
 ## 3. Use supported formats
 
 - weights: `safetensors`
-- adapters: load once at pipeline initialization time
+- adapters: validate at pipeline initialization time, then apply once when the runtime pipeline is materialized
 - artifacts: emit `Artifact` records with concrete file paths
 
 ## 4. Add tests

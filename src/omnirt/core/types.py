@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Literal, Optional, Sequence, Type, TypeVar, 
 import yaml
 
 
-TaskName = Literal["text2image", "image2video"]
+TaskName = Literal["text2image", "text2video", "image2video"]
 BackendName = Literal["cuda", "ascend", "auto"]
 ArtifactKind = Literal["image", "video"]
 AdapterKind = Literal["lora"]
@@ -99,10 +99,16 @@ class BackendAttempt:
     level: str
     ok: bool
     reason: Optional[str] = None
+    selected: bool = False
 
     @classmethod
     def from_dict(cls, payload: Dict[str, Any]) -> "BackendAttempt":
-        return cls(**payload)
+        return cls(
+            level=payload["level"],
+            ok=bool(payload["ok"]),
+            reason=payload.get("reason"),
+            selected=bool(payload.get("selected", False)),
+        )
 
 
 @dataclass
@@ -213,4 +219,3 @@ def dataclass_to_dict(instance: Any) -> Dict[str, Any]:
 
 def listify(items: Optional[Sequence[T]]) -> List[T]:
     return list(items) if items else []
-

@@ -1,5 +1,7 @@
+from types import SimpleNamespace
 from typing import Optional
 
+from omnirt.backends.ascend import AscendBackend
 from omnirt.backends.base import BackendRuntime
 
 
@@ -50,3 +52,30 @@ def test_wrap_module_uses_registered_override() -> None:
 
     assert wrapped == {"override": True}
     assert backend.backend_timeline[0].attempts[1].ok is True
+
+
+def test_ascend_backend_requires_visible_devices() -> None:
+    backend = object.__new__(AscendBackend)
+    backend.torch_npu = SimpleNamespace(npu=SimpleNamespace(device_count=lambda: 2))
+
+    assert backend.is_available() is True
+    assert backend.capabilities().device_count == 2
+    # v0.1: torch_npu compile is not wired up yet; honest capability reporting.
+    assert backend.capabilities().compile_available is False
+
+    backend.torch_npu = SimpleNamespace(npu=SimpleNamespace(device_count=lambda: 0))
+
+    assert backend.is_available() is False
+    assert backend.capabilities().device_count == 0
+    assert backend.capabilities().compile_available is False
+
+
+def test_ascend_compile_raises_not_implemented() -> None:
+    backend = object.__new__(AscendBackend)
+    backend.torch_npu = SimpleNamespace(npu=SimpleNamespace(device_count=lambda: 1))
+    try:
+        backend._compile(module=object(), tag="unet")
+    except NotImplementedError as exc:
+        assert "torch_npu compile" in str(exc)
+    else:
+        raise AssertionError("AscendBackend._compile must raise NotImplementedError in v0.1")

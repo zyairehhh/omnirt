@@ -1,4 +1,4 @@
-"""SDXL pipeline implementation backed by Diffusers."""
+"""Flux2 pipeline implementation backed by Diffusers."""
 
 from __future__ import annotations
 
@@ -9,17 +9,22 @@ from typing import Any, Dict, List, Optional
 from omnirt.core.base_pipeline import BasePipeline
 from omnirt.core.registry import register_model
 from omnirt.core.types import Artifact, DependencyUnavailableError, GenerateRequest
-from omnirt.models.sdxl.components import DEFAULT_SDXL_MODEL_SOURCE
-from omnirt.schedulers import build_scheduler
+from omnirt.models.flux2.components import DEFAULT_FLUX2_DEV_MODEL_SOURCE
 
 
 @register_model(
-    id="sdxl-base-1.0",
+    id="flux2.dev",
     task="text2image",
     default_backend="auto",
-    resource_hint={"min_vram_gb": 12, "dtype": "fp16"},
+    resource_hint={"min_vram_gb": 24, "dtype": "bf16"},
 )
-class SDXLPipeline(BasePipeline):
+@register_model(
+    id="flux2-dev",
+    task="text2image",
+    default_backend="auto",
+    resource_hint={"min_vram_gb": 24, "dtype": "bf16"},
+)
+class Flux2Pipeline(BasePipeline):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._pipeline = None
@@ -33,25 +38,25 @@ class SDXLPipeline(BasePipeline):
             raise ValueError("text2image requires inputs.prompt")
         return {
             "prompt": prompt,
-            "negative_prompt": req.inputs.get("negative_prompt"),
-            "model_source": req.config.get("model_path", DEFAULT_SDXL_MODEL_SOURCE),
-            "scheduler": req.config.get("scheduler", "euler-discrete"),
+            "model_source": req.config.get("model_path", DEFAULT_FLUX2_DEV_MODEL_SOURCE),
+            "scheduler": req.config.get("scheduler", "native"),
             "height": int(req.config.get("height", 1024)),
             "width": int(req.config.get("width", 1024)),
             "num_images_per_prompt": int(req.config.get("num_images_per_prompt", 1)),
+            "max_sequence_length": int(req.config.get("max_sequence_length", 512)),
+            "caption_upsample_temperature": req.config.get("caption_upsample_temperature"),
         }
 
     def prepare_latents(self, req: GenerateRequest, conditions: Any) -> Dict[str, Any]:
-        steps = int(req.config.get("num_inference_steps", 30))
+        steps = int(req.config.get("num_inference_steps", 50))
         seed = req.config.get("seed")
-        guidance_scale = float(req.config.get("guidance_scale", 7.5))
-        torch_dtype = self._resolve_torch_dtype(req.config.get("dtype"))
+        guidance_scale = float(req.config.get("guidance_scale", 2.5))
+        torch_dtype = self._resolve_torch_dtype(req.config.get("dtype", "bf16"))
         generator = self._build_generator(seed)
         pipeline = self._load_pipeline(
             source=conditions["model_source"],
             torch_dtype=torch_dtype,
             scheduler_name=conditions["scheduler"],
-            config=req.config,
         )
         self._last_seed = seed
         return {
@@ -66,17 +71,20 @@ class SDXLPipeline(BasePipeline):
     def denoise_loop(self, latents: Any, conditions: Any, config: Dict[str, Any]) -> Dict[str, Any]:
         started = time.perf_counter()
         pipeline = latents["pipeline"]
-        result = pipeline(
-            prompt=conditions["prompt"],
-            negative_prompt=conditions.get("negative_prompt"),
-            num_inference_steps=latents["steps"],
-            guidance_scale=latents["guidance_scale"],
-            generator=latents["generator"],
-            height=conditions["height"],
-            width=conditions["width"],
-            num_images_per_prompt=conditions["num_images_per_prompt"],
-            output_type="pil",
-        )
+        kwargs = {
+            "prompt": conditions["prompt"],
+            "num_inference_steps": latents["steps"],
+            "guidance_scale": latents["guidance_scale"],
+            "generator": latents["generator"],
+            "height": conditions["height"],
+            "width": conditions["width"],
+            "num_images_per_prompt": conditions["num_images_per_prompt"],
+            "max_sequence_length": conditions["max_sequence_length"],
+            "output_type": "pil",
+        }
+        if conditions["caption_upsample_temperature"] is not None:
+            kwargs["caption_upsample_temperature"] = float(conditions["caption_upsample_temperature"])
+        result = pipeline(**kwargs)
         return {
             "images": list(result.images),
             "seed": latents["seed"],
@@ -111,10 +119,12 @@ class SDXLPipeline(BasePipeline):
             "height": conditions["height"],
             "width": conditions["width"],
             "num_images_per_prompt": conditions["num_images_per_prompt"],
+            "max_sequence_length": conditions["max_sequence_length"],
+            "caption_upsample_temperature": conditions["caption_upsample_temperature"],
             "num_inference_steps": latents["steps"],
             "guidance_scale": latents["guidance_scale"],
             "seed": latents["seed"],
-            "dtype": req.config.get("dtype", "fp16"),
+            "dtype": req.config.get("dtype", "bf16"),
             "output_dir": str(Path(req.config.get("output_dir", "outputs"))),
         }
 
@@ -122,13 +132,13 @@ class SDXLPipeline(BasePipeline):
         try:
             import torch
         except ImportError as exc:
-            raise DependencyUnavailableError("PyTorch is required to run the SDXL pipeline.") from exc
+            raise DependencyUnavailableError("PyTorch is required to run the Flux2 pipeline.") from exc
         return torch
 
     def _resolve_torch_dtype(self, dtype_name: Optional[str]):
         torch = self._torch()
         mapping = {
-            None: torch.float16,
+            None: torch.bfloat16,
             "fp16": torch.float16,
             "bf16": torch.bfloat16,
             "fp32": torch.float32,
@@ -151,36 +161,21 @@ class SDXLPipeline(BasePipeline):
 
     def _diffusers_pipeline_cls(self):
         try:
-            from diffusers import StableDiffusionXLPipeline
+            from diffusers import Flux2Pipeline as DiffusersFlux2Pipeline
         except ImportError as exc:
             raise DependencyUnavailableError(
-                "diffusers is required for SDXL execution. Install omnirt with runtime dependencies."
+                "diffusers with Flux2 support is required for Flux2 execution. Install omnirt with runtime dependencies."
             ) from exc
-        return StableDiffusionXLPipeline
+        return DiffusersFlux2Pipeline
 
-    def _load_pipeline(
-        self,
-        *,
-        source: str,
-        torch_dtype: Any,
-        scheduler_name: str,
-        config: Dict[str, Any],
-    ):
+    def _load_pipeline(self, *, source: str, torch_dtype: Any, scheduler_name: str):
         if self._pipeline is not None and self._pipeline_source == source and self._pipeline_dtype == torch_dtype:
             return self._pipeline
 
         pipeline_cls = self._diffusers_pipeline_cls()
-        pipeline = pipeline_cls.from_pretrained(
-            source,
-            torch_dtype=torch_dtype,
-            use_safetensors=True,
-        )
-        if scheduler_name != "euler-discrete":
-            raise ValueError(f"Unsupported SDXL scheduler: {scheduler_name}")
-        scheduler_config = dict(config)
-        if getattr(pipeline, "scheduler", None) is not None and hasattr(pipeline.scheduler, "config"):
-            scheduler_config["scheduler_config"] = pipeline.scheduler.config
-        pipeline.scheduler = build_scheduler(scheduler_config)
+        pipeline = pipeline_cls.from_pretrained(source, torch_dtype=torch_dtype)
+        if scheduler_name != "native":
+            raise ValueError(f"Unsupported Flux2 scheduler: {scheduler_name}")
         self._wrap_pipeline_modules(pipeline)
         pipeline = self.runtime.to_device(pipeline, dtype=torch_dtype)
         self._apply_adapters(pipeline)
@@ -190,7 +185,7 @@ class SDXLPipeline(BasePipeline):
         return pipeline
 
     def _wrap_pipeline_modules(self, pipeline: Any) -> None:
-        for tag in ("text_encoder", "text_encoder_2", "unet", "vae"):
+        for tag in ("text_encoder", "transformer", "vae"):
             module = getattr(pipeline, tag, None)
             if module is None:
                 continue

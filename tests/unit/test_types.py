@@ -37,3 +37,17 @@ def test_generate_result_round_trip() -> None:
 
     assert GenerateResult.from_dict(result.to_dict()) == result
 
+
+def test_generate_request_supports_text2video() -> None:
+    payload = {
+        "task": "text2video",
+        "model": "wan2.2-t2v-14b",
+        "backend": "cuda",
+        "inputs": {"prompt": "storm over a futuristic harbor", "num_frames": 81},
+        "config": {"seed": 3},
+    }
+
+    request = GenerateRequest.from_dict(payload)
+
+    assert request.task == "text2video"
+    assert request.inputs["num_frames"] == 81

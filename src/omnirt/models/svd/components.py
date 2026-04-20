@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-DEFAULT_SVD_MODEL_SOURCE = "stabilityai/stable-video-diffusion-img2vid-xt"
+DEFAULT_SVD_MODEL_SOURCE = "stabilityai/stable-video-diffusion-img2vid"
+DEFAULT_SVD_XT_MODEL_SOURCE = "stabilityai/stable-video-diffusion-img2vid-xt"
 
 
 @dataclass

@@ -36,7 +36,8 @@ jobs:
         env:
           OMNIRT_SDXL_MODEL_SOURCE: ${{ vars.OMNIRT_SDXL_MODEL_SOURCE }}
           OMNIRT_SVD_MODEL_SOURCE: ${{ vars.OMNIRT_SVD_MODEL_SOURCE }}
-        run: pytest tests/integration/test_sdxl_cuda.py tests/integration/test_svd_cuda.py tests/integration/test_error_paths.py
+          OMNIRT_SVD_XT_MODEL_SOURCE: ${{ vars.OMNIRT_SVD_XT_MODEL_SOURCE }}
+        run: pytest tests/integration/test_sdxl_cuda.py tests/integration/test_svd_base_cuda.py tests/integration/test_svd_cuda.py tests/integration/test_error_paths.py
 
   ascend-smoke:
     if: ${{ vars.OMNIRT_ENABLE_ASCEND_RUNNER == 'true' }}
@@ -55,4 +56,5 @@ jobs:
         env:
           OMNIRT_SDXL_MODEL_SOURCE: ${{ vars.OMNIRT_SDXL_MODEL_SOURCE }}
           OMNIRT_SVD_MODEL_SOURCE: ${{ vars.OMNIRT_SVD_MODEL_SOURCE }}
-        run: pytest tests/integration/test_sdxl_ascend.py tests/integration/test_svd_ascend.py tests/integration/test_error_paths.py
+          OMNIRT_SVD_XT_MODEL_SOURCE: ${{ vars.OMNIRT_SVD_XT_MODEL_SOURCE }}
+        run: pytest tests/integration/test_sdxl_ascend.py tests/integration/test_svd_base_ascend.py tests/integration/test_svd_ascend.py tests/integration/test_error_paths.py

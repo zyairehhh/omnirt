@@ -8,6 +8,7 @@ import time
 import uuid
 from typing import Any, Dict, Iterable, List, Optional
 
+from omnirt.backends.cpu_stub import denoise_guard
 from omnirt.core.adapters import AdapterManager
 from omnirt.core.registry import ModelSpec
 from omnirt.core.types import Artifact, GenerateRequest, GenerateResult, InsufficientMemoryError
@@ -26,9 +27,10 @@ class BasePipeline(ABC):
         self.logger = get_logger()
         self.last_report = None
         self.components: Dict[str, Any] = {}
+        self.loaded_adapters = []
 
         if self.adapters:
-            self.adapter_manager.load_all(self.adapters)
+            self.loaded_adapters = self.adapter_manager.load_all(self.adapters)
 
     @abstractmethod
     def prepare_conditions(self, req: GenerateRequest) -> Any:
@@ -49,6 +51,9 @@ class BasePipeline(ABC):
     @abstractmethod
     def export(self, raw: Any, req: GenerateRequest) -> List[Artifact]:
         raise NotImplementedError
+
+    def resolve_run_config(self, req: GenerateRequest, conditions: Any, latents: Any) -> Dict[str, Any]:
+        return dict(req.config)
 
     def resolve_output_dir(self, req: GenerateRequest) -> Path:
         output_dir = Path(req.config.get("output_dir", "outputs"))
@@ -95,6 +100,8 @@ class BasePipeline(ABC):
         try:
             conditions = timed("prepare_conditions", lambda: self.prepare_conditions(req))
             latents = timed("prepare_latents", lambda: self.prepare_latents(req, conditions))
+            resolved_config = self.resolve_run_config(req, conditions, latents)
+            denoise_guard(self.runtime)
             denoised = timed("denoise_loop", lambda: self.denoise_loop(latents, conditions, req.config))
             raw = timed("decode", lambda: self.decode(denoised))
             outputs = timed("export", lambda: self.export(raw, req))
@@ -105,6 +112,7 @@ class BasePipeline(ABC):
                 timings=timings,
                 memory=self.runtime.memory_stats(),
                 backend_timeline=self.runtime.backend_timeline,
+                config_resolved=resolved_config,
                 artifacts=outputs,
                 error=None,
             )
@@ -118,6 +126,7 @@ class BasePipeline(ABC):
                 timings=timings,
                 memory=self.runtime.memory_stats(),
                 backend_timeline=self.runtime.backend_timeline,
+                config_resolved=locals().get("resolved_config", dict(req.config)),
                 artifacts=outputs,
                 error=str(exc),
             )

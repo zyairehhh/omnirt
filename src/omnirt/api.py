@@ -25,12 +25,19 @@ def _coerce_request(request: RequestLike) -> GenerateRequest:
 
 
 def generate(request: RequestLike, *, backend: Optional[str] = None) -> GenerateResult:
-    """Run a generation request through a registered pipeline."""
+    """Run a generation request through a registered pipeline.
+
+    Backend resolution priority: explicit ``backend`` argument > ``req.backend`` > ``"auto"``.
+    """
 
     ensure_registered()
     req = _coerce_request(request)
-    runtime = resolve_backend(backend or req.backend)
     spec = get_model(req.model)
+    if req.task != spec.task:
+        raise ValueError(
+            f"Model {req.model!r} only supports task {spec.task!r}, got request task {req.task!r}."
+        )
+    selected = backend if backend is not None else (req.backend or "auto")
+    runtime = resolve_backend(selected)
     pipeline = spec.pipeline_cls(runtime=runtime, model_spec=spec, adapters=req.adapters)
     return pipeline.run(req)
-
