@@ -1,7 +1,7 @@
 # OmniRT
 
 <p align="center">
-  <strong>Unified image / video / talking-avatar runtime for CUDA and Ascend</strong>
+  <strong>Unified image / video / speech / talking-avatar runtime for CUDA and Ascend</strong>
 </p>
 
 <p align="center">
@@ -21,15 +21,15 @@
 
 ---
 
-OmniRT is an open runtime that unifies **text→image / image→image / text→video / image→video / audio→avatar** generation behind a single request contract, CLI / Python API / HTTP surface, and pluggable hardware backend. Switching model families does **not** require relearning the runtime.
+OmniRT is an open runtime that unifies **text→image / image→image / text→speech / text→video / image→video / audio→avatar** generation behind a single request contract, CLI / Python API / HTTP surface, and pluggable hardware backend. Switching model families does **not** require relearning the runtime.
 
 ## ✨ Highlights
 
 - **Unified contract** — `GenerateRequest`, `GenerateResult`, `RunReport` cover every task surface
 - **Cross-backend** — the same request validates and runs on `cuda` / `ascend` / `cpu-stub`
 - **Three entry points** — Python API, CLI (`omnirt generate / validate / models`), FastAPI server
-- **16+ model families** — SD1.5 / SDXL / SD3 / FLUX / FLUX2 / WAN / SVD / AnimateDiff / ChronoEdit / FlashTalk / FlashHead …
-- **Standard artifacts** — PNG for images, MP4 for videos, each run ships a `RunReport`
+- **16+ model families** — SD1.5 / SDXL / SD3 / FLUX / FLUX2 / WAN / SVD / AnimateDiff / ChronoEdit / CosyVoice / FlashTalk / FlashHead …
+- **Standard artifacts** — PNG for images, WAV for speech, MP4 for videos, each run ships a `RunReport`
 - **Offline-friendly** — local directories, Hugging Face, ModelScope, Modelers snapshots all supported
 - **LoRA flexibility** — local safetensors and `hf://` single-file refs side by side
 - **Async dispatch** — `queue` / `worker` / `policies` for batched requests and multi-model queueing
@@ -42,6 +42,7 @@ OmniRT is an open runtime that unifies **text→image / image→image / text→v
 |---|---|---|
 | `text2image` | prompt-driven image generation | PNG |
 | `image2image` | image-guided image generation | PNG |
+| `text2audio` | text plus reference audio speech generation | WAV |
 | `text2video` | prompt-driven video generation | MP4 |
 | `image2video` | first-frame-guided video generation | MP4 |
 | `audio2video` | audio-driven talking avatar generation | MP4 |
@@ -124,6 +125,7 @@ A mirrored doc snapshot is at [docs/user_guide/models/supported_models.en.md](./
 |---|---|
 | Image | `sdxl-base-1.0`, `sdxl-refiner-1.0`, `sd15`, `sd21`, `sd3`, `flux.dev`, `flux2.dev`, `kolors`, `pixart-sigma`, `bria-3.2`, `lumina-t2x` |
 | Image edit | `flux-depth`, `flux-canny`, `flux-fill`, `flux-kontext`, `qwen-image-edit*`, `chronoedit` |
+| Speech | `cosyvoice3-triton-trtllm` |
 | Video | `svd-xt`, `wan*`, `animate-diff-sdxl`, `mochi`, `skyreels-v2`, `hunyuan-video-1.5-*`, `helios-*` |
 | Talking avatar | `flashtalk`, `flashhead` |
 
@@ -131,23 +133,7 @@ Recommended starting points for `image2image`: `sdxl-base-1.0`, `sdxl-refiner-1.
 
 ## 🧱 Architecture
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  CLI / Python API / FastAPI Server                           │
-├──────────────────────────────────────────────────────────────┤
-│  requests (typed helpers)  →  GenerateRequest                │
-│                               ↓                              │
-│                        dispatch / scheduler / queue          │
-│                               ↓                              │
-│                          engine  +  middleware               │
-│                               ↓                              │
-│  backends:  cuda   |   ascend   |   cpu-stub          │
-│                               ↓                              │
-│                models:  sdxl · flux · wan · svd · …          │
-│                               ↓                              │
-│                    GenerateResult + RunReport (PNG / MP4)    │
-└──────────────────────────────────────────────────────────────┘
-```
+![OmniRT architecture](./docs/assets/architecture/omnirt-readme-architecture.en.png)
 
 Layering, backend abstraction, and model adaptation notes live in [docs/developer_guide/architecture.en.md](./docs/developer_guide/architecture.en.md).
 
@@ -162,6 +148,7 @@ Real end-to-end generation still depends on the target hardware stack, runtime l
 ## 📦 Project Status
 
 - Real-hardware smoke coverage is confirmed for `sdxl-base-1.0` and `svd-xt` on both CUDA and Ascend
+- `cosyvoice3-triton-trtllm` has completed CUDA real-hardware validation through the official Triton / TensorRT-LLM route; the 26-sample streaming benchmark measured `RTF=0.1303` and `699.13ms` average first-chunk latency
 - `image2image` is publicly supported; `sdxl-refiner-1.0` already has CUDA and Ascend smoke entry points, pending verified local model directories
 - Editing models such as `flux-fill`, `flux-kontext`, and `qwen-image-edit*` have smoke-test entry points pending verified local model directories
 - The broader roadmap lives in [docs/user_guide/models/roadmap.en.md](./docs/user_guide/models/roadmap.en.md)
@@ -194,6 +181,7 @@ Mirror configuration, environment variables, and the full offline flow (covering
 - **User guide**
   - Quickstart: [docs/getting_started/quickstart.en.md](./docs/getting_started/quickstart.en.md)
   - CLI reference: [docs/cli_reference/index.en.md](./docs/cli_reference/index.en.md)
+  - Text to Audio: [docs/user_guide/generation/text2audio.en.md](./docs/user_guide/generation/text2audio.en.md)
   - Python API: [docs/user_guide/serving/python_api.en.md](./docs/user_guide/serving/python_api.en.md)
   - HTTP server: [docs/user_guide/serving/http_server.en.md](./docs/user_guide/serving/http_server.en.md)
   - Presets: [docs/user_guide/features/presets.en.md](./docs/user_guide/features/presets.en.md)
@@ -206,6 +194,7 @@ Mirror configuration, environment variables, and the full offline flow (covering
   - Model onboarding: [docs/developer_guide/model_onboarding.en.md](./docs/developer_guide/model_onboarding.en.md)
   - Backend onboarding: [docs/developer_guide/backend_onboarding.en.md](./docs/developer_guide/backend_onboarding.en.md)
   - Benchmark baseline: [docs/developer_guide/benchmark_baseline.en.md](./docs/developer_guide/benchmark_baseline.en.md)
+  - CosyVoice benchmark: [docs/developer_guide/cosyvoice_benchmark.en.md](./docs/developer_guide/cosyvoice_benchmark.en.md)
   - Legacy optimization guide: [docs/developer_guide/legacy_optimization_guide.en.md](./docs/developer_guide/legacy_optimization_guide.en.md)
   - Contributing: [docs/developer_guide/contributing.en.md](./docs/developer_guide/contributing.en.md)
 - **API reference**: [docs/api_reference/index.en.md](./docs/api_reference/index.en.md)
