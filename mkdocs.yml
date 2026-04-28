@@ -149,6 +149,7 @@ plugins:
                 - Architecture: developer_guide/architecture.md
                 - Legacy Optimization Guide: developer_guide/legacy_optimization_guide.md
                 - Benchmark Baseline: developer_guide/benchmark_baseline.md
+                - FlashHead Benchmark: developer_guide/flashhead_benchmark.md
                 - Model Onboarding: developer_guide/model_onboarding.md
                 - Backend Onboarding: developer_guide/backend_onboarding.md
             - API Reference:
@@ -214,6 +215,7 @@ nav:
       - 架构说明: developer_guide/architecture.md
       - Legacy 优化指南: developer_guide/legacy_optimization_guide.md
       - Benchmark 基线: developer_guide/benchmark_baseline.md
+      - FlashHead Benchmark: developer_guide/flashhead_benchmark.md
       - 模型接入: developer_guide/model_onboarding.md
       - 后端接入: developer_guide/backend_onboarding.md
   - API 参考:

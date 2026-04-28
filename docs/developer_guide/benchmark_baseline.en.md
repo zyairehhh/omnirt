@@ -130,3 +130,4 @@ Do not treat CPU stub or fake-runtime numbers as release performance claims. The
 - [Dispatch & Queue](../user_guide/features/dispatch_queue.md)
 - [Telemetry](../user_guide/features/telemetry.md)
 - [Legacy Optimization Guide](legacy_optimization_guide.md)
+- [FlashHead Benchmark](flashhead_benchmark.md)

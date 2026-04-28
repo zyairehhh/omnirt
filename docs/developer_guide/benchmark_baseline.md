@@ -130,3 +130,4 @@ omnirt bench \
 - [派发与队列](../user_guide/features/dispatch_queue.md)
 - [遥测](../user_guide/features/telemetry.md)
 - [Legacy 优化指南](legacy_optimization_guide.md)
+- [FlashHead Benchmark](flashhead_benchmark.md)
