@@ -86,12 +86,26 @@ def add_request_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--output-dir", help="Output directory for saved artifacts.")
     parser.add_argument("--model-path", help="Override the default model source.")
     parser.add_argument("--motion-bucket-id", type=int, help="Alias for SVD frame bucket / motion bucket id.")
-    parser.add_argument("--repo-path", help="External repository checkout path for script-backed models such as SoulX-FlashTalk.")
+    parser.add_argument(
+        "--repo-path",
+        help="External repository checkout path for script-backed models such as SoulX-FlashTalk or SoulX-FlashHead.",
+    )
     parser.add_argument("--ckpt-dir", help="Checkpoint directory for script-backed models.")
-    parser.add_argument("--wav2vec-dir", help="wav2vec checkpoint directory for FlashTalk.")
+    parser.add_argument("--wav2vec-dir", help="wav2vec checkpoint directory for script-backed talking-head models.")
     parser.add_argument("--resident-target", help="Target gRPC address for a pre-warmed resident worker, for example 127.0.0.1:50071.")
     parser.add_argument("--resident-autostart", action="store_true", help="Auto-launch a managed resident worker for models that support it.")
-    parser.add_argument("--audio-encode-mode", choices=["stream", "once"], help="Audio encoding mode for FlashTalk.")
+    parser.add_argument("--audio-encode-mode", choices=["stream", "once"], help="Audio encoding mode for talking-head models.")
+    parser.add_argument("--model-type", help="Model type for script-backed model families, for example FlashHead pro/lite.")
+    parser.add_argument("--sample-steps", type=int, help="Sample step override for script-backed video/avatar models.")
+    parser.add_argument(
+        "--vae-2d-split",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable or disable FlashHead 2D VAE split.",
+    )
+    parser.add_argument("--latent-carry", action="store_true", help="Enable FlashHead latent carry experimental mode.")
+    parser.add_argument("--npu-fusion-attention", action="store_true", help="Enable FlashHead NPU fusion attention.")
+    parser.add_argument("--profile", action="store_true", help="Enable model-side profiling when supported.")
     parser.add_argument("--cpu-offload", action="store_true", help="Enable CPU offload for script-backed models that support it.")
     parser.add_argument("--max-chunks", type=int, help="Limit generated audio chunks for streaming avatar models.")
     parser.add_argument("--python-executable", help="Python interpreter used to launch external model scripts.")
@@ -390,8 +404,10 @@ def request_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser)
         "ckpt_dir",
         "wav2vec_dir",
         "resident_target",
-        "resident_autostart",
         "audio_encode_mode",
+        "model_type",
+        "sample_steps",
+        "vae_2d_split",
         "max_chunks",
         "python_executable",
         "launcher",
@@ -420,8 +436,16 @@ def request_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser)
             config[field] = value
     if args.model_path:
         config["model_path"] = args.model_path
+    if getattr(args, "resident_autostart", False):
+        config["resident_autostart"] = True
     if getattr(args, "cpu_offload", False):
         config["cpu_offload"] = True
+    if getattr(args, "latent_carry", False):
+        config["latent_carry"] = True
+    if getattr(args, "npu_fusion_attention", False):
+        config["npu_fusion_attention"] = True
+    if getattr(args, "profile", False):
+        config["profile"] = True
     if getattr(args, "enable_layerwise_casting", False):
         config["enable_layerwise_casting"] = True
     if getattr(args, "enable_tea_cache", False):

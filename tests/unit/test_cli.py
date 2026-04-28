@@ -251,6 +251,41 @@ def test_request_from_args_builds_audio2video_request() -> None:
     assert request.config["cpu_offload"] is True
 
 
+def test_request_from_args_accepts_flashhead_runtime_flags() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "generate",
+            "--task",
+            "audio2video",
+            "--model",
+            "soulx-flashhead-1.3b",
+            "--image",
+            "speaker.png",
+            "--audio",
+            "voice.wav",
+            "--model-type",
+            "pro",
+            "--sample-steps",
+            "2",
+            "--no-vae-2d-split",
+            "--latent-carry",
+            "--npu-fusion-attention",
+            "--profile",
+        ]
+    )
+
+    request = request_from_args(args, parser)
+
+    assert request.config["model_type"] == "pro"
+    assert request.config["sample_steps"] == 2
+    assert request.config["vae_2d_split"] is False
+    assert request.config["latent_carry"] is True
+    assert request.config["npu_fusion_attention"] is True
+    assert request.config["profile"] is True
+    assert "resident_autostart" not in request.config
+
+
 def test_request_from_args_accepts_presets_and_scheduler() -> None:
     parser = build_parser()
     args = parser.parse_args(

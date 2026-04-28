@@ -2,7 +2,7 @@
 
 本文档记录 `omnirt` 当前已经接入、已做真机 smoke、以及尚未完成的重点模型。
 
-最近更新：`2026-04-21`
+最近更新：`2026-04-28`
 
 ## 当前公开任务面
 
@@ -29,6 +29,9 @@
 - `soulx-flashtalk-14b`
   Ascend: `内部 Ascend 验证主机`
   说明: `persistent_worker` 常驻 8 卡 `Ascend 910B2` 链路已跑通；冷启动约 `91s`，实时配置热态 `steady_chunk_core_ms_avg ≈ 891ms`
+- `soulx-flashhead-1.3b`
+  Ascend: `内部 Ascend 验证主机`
+  说明: 外部 SoulX-FlashHead checkout 已完成 910B NPU 适配和质量档验证；OmniRT 当前接入的是 script-backed 冷启动包装，默认 `2-step + 2D VAE split + latent_carry off`。OmniRT 真机冷启动 benchmark：2 卡 `82.96s`，4 卡 `84.08s`，输出均为 `512x512 / 10s / 250 frames`
 
 ## 已接入但仍待真机 smoke
 
