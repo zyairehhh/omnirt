@@ -157,6 +157,7 @@ Real end-to-end generation still depends on the target hardware stack, runtime l
 - `cosyvoice3-triton-trtllm` is wired into `text2audio` and generates WAV audio through the official Triton / TensorRT-LLM route
 - `image2image` is publicly supported; `sdxl-refiner-1.0` already has CUDA and Ascend smoke entry points, pending verified local model directories
 - Editing models such as `flux-fill`, `flux-kontext`, `qwen-image-edit`, and `qwen-image-edit-plus` have smoke-test entry points pending verified local model directories
+- `soulx-flashtalk-14b` can serve OpenTalking-style realtime avatar clients through the [FlashTalk-compatible WebSocket](./docs/user_guide/serving/flashtalk_ws.en.md) path; for 910B hosts, follow the FlashTalk WebSocket startup walkthrough in that guide
 - The broader roadmap lives in [docs/user_guide/models/roadmap.en.md](./docs/user_guide/models/roadmap.en.md)
 
 ## 🚢 Deployment Topologies
@@ -189,6 +190,7 @@ Mirror configuration, environment variables, and the full offline flow (covering
   - CLI reference: [docs/cli_reference/index.en.md](./docs/cli_reference/index.en.md)
   - Python API: [docs/user_guide/serving/python_api.en.md](./docs/user_guide/serving/python_api.en.md)
   - HTTP server: [docs/user_guide/serving/http_server.en.md](./docs/user_guide/serving/http_server.en.md)
+  - Realtime avatar integration with [OpenTalking](https://github.com/zyairehhh/opentalking): [FlashTalk-compatible WebSocket](./docs/user_guide/serving/flashtalk_ws.en.md)
   - Presets: [docs/user_guide/features/presets.en.md](./docs/user_guide/features/presets.en.md)
   - Validation: [docs/user_guide/features/validation.en.md](./docs/user_guide/features/validation.en.md)
   - Service schema: [docs/user_guide/features/service_schema.en.md](./docs/user_guide/features/service_schema.en.md)
@@ -212,6 +214,7 @@ Mirror configuration, environment variables, and the full offline flow (covering
 | [`scripts/prepare_modelscope_snapshot.py`](./scripts/prepare_modelscope_snapshot.py) | Prepare ModelScope repositories and large files |
 | [`scripts/check_model_layout.py`](./scripts/check_model_layout.py) | Validate local model directory layout |
 | [`scripts/sync_model_dir.sh`](./scripts/sync_model_dir.sh) | Sync model directories to remote servers |
+| [`scripts/start_flashtalk_ws.sh`](./scripts/start_flashtalk_ws.sh) | Start the [FlashTalk-compatible WebSocket](./docs/user_guide/serving/flashtalk_ws.en.md) service for [OpenTalking](https://github.com/zyairehhh/opentalking)-style realtime avatar clients |
 
 ## 🤝 Contributing
 
