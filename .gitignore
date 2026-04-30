@@ -214,3 +214,6 @@ PLAN.md
 # Git worktrees (superpowers skill)
 .worktrees/
 
+# OmniRT runtime artifacts: venvs, cloned model repos, state, checkpoints.
+# Project-maintained patches live under model_backends/ and remain trackable.
+.omnirt/

@@ -77,6 +77,20 @@ pip install -e '.[docs]'
 
 Full walkthrough — first `validate` / `generate`, YAML request format, presets, `hf://` single-file LoRA refs — see [docs/getting_started/quickstart.en.md](./docs/getting_started/quickstart.en.md).
 
+## FlashTalk 910B Runtime
+
+FlashTalk on Ascend 910B is managed by `omnirt runtime`. Runtime artifacts default to `.omnirt/` inside this checkout; if checkpoints already exist, pass their paths and the installer will skip those directories. Run the following from the **OmniRT repository root**; paths are relative to that root:
+
+```bash
+python -m omnirt.cli.main runtime install flashtalk --device ascend \
+  --ckpt-dir .omnirt/model-repos/SoulX-FlashTalk/models/SoulX-FlashTalk-14B \
+  --wav2vec-dir .omnirt/model-repos/SoulX-FlashTalk/models/chinese-wav2vec2-base \
+  --no-update \
+  --recreate-venv
+```
+
+See [FlashTalk-compatible WebSocket](./docs/user_guide/serving/flashtalk_ws.en.md) for the directory layout, `--home` / `--repo-dir`, and launch steps.
+
 ## 🐍 Python API
 
 ```python
@@ -214,6 +228,8 @@ Mirror configuration, environment variables, and the full offline flow (covering
 | [`scripts/prepare_modelscope_snapshot.py`](./scripts/prepare_modelscope_snapshot.py) | Prepare ModelScope repositories and large files |
 | [`scripts/check_model_layout.py`](./scripts/check_model_layout.py) | Validate local model directory layout |
 | [`scripts/sync_model_dir.sh`](./scripts/sync_model_dir.sh) | Sync model directories to remote servers |
+| [`model_backends/`](./model_backends/) | Manage isolated model backend environments, dependencies, and launch assets while keeping OmniRT lightweight |
+| `omnirt runtime install flashtalk --device ascend` | Prepare the FlashTalk 910B model environment, external checkout, and checkpoints |
 | [`scripts/start_flashtalk_ws.sh`](./scripts/start_flashtalk_ws.sh) | Start the [FlashTalk-compatible WebSocket](./docs/user_guide/serving/flashtalk_ws.en.md) service for [OpenTalking](https://github.com/zyairehhh/opentalking)-style realtime avatar clients |
 
 ## 🤝 Contributing

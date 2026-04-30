@@ -71,13 +71,14 @@ Given a face portrait plus an audio clip, produce an MP4 where lips, head motion
 | `soulx-liveact-14b` | portrait + audio | MP4 | 4-card Ascend 910B recommended |
 
 !!! info "SoulX avatar models are script-backed"
-    `soulx-flashtalk-14b`, `soulx-flashhead-1.3b`, and `soulx-liveact-14b` require an external SoulX checkout, model checkpoint directory, wav2vec directory, and matching Python environment. For restricted networks see the "script-backed model mirrors" section of [Domestic Deployment](../deployment/china_mirrors.md).
+    `soulx-flashtalk-14b`, `soulx-flashhead-1.3b`, and `soulx-liveact-14b` require a separate model backend environment, external SoulX checkout, model checkpoint directory, and wav2vec directory. OmniRT itself stays as the lightweight framework environment, while model backend setup scripts live under `model_backends/`.
 
 ## Realtime WebSocket Integration
 
-The `generate` / HTTP examples above are for offline MP4 generation. To use OmniRT as the realtime avatar model service behind [OpenTalking](https://github.com/zyairehhh/opentalking) or similar frontends, prepare the external SoulX-FlashTalk checkout, model weights, wav2vec weights, FlashTalk Python environment, and Ascend/CANN environment script, then start the FlashTalk-compatible WebSocket service:
+The `generate` / HTTP examples above are for offline MP4 generation. To use OmniRT as the realtime avatar model service behind [OpenTalking](https://github.com/zyairehhh/opentalking) or similar frontends, prepare the FlashTalk model backend first, then start the FlashTalk-compatible WebSocket service:
 
 ```bash
+omnirt runtime install flashtalk --device ascend
 bash scripts/start_flashtalk_ws.sh
 ```
 

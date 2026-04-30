@@ -112,14 +112,14 @@ def test_audio2video_request_helper_is_ergonomic() -> None:
         image="face.png",
         audio="voice.wav",
         prompt="talking portrait",
-        repo_path="/srv/SoulX-FlashTalk",
+        repo_path="/path/to/SoulX-FlashTalk",
         launcher="python",
     )
 
     assert request.task == "audio2video"
     assert request.inputs["image"] == "face.png"
     assert request.inputs["audio"] == "voice.wav"
-    assert request.config["repo_path"] == "/srv/SoulX-FlashTalk"
+    assert request.config["repo_path"] == "/path/to/SoulX-FlashTalk"
     assert request.config["launcher"] == "python"
 
 
@@ -129,7 +129,7 @@ def test_text2audio_request_helper_is_ergonomic() -> None:
         prompt="欢迎来到 OmniRT。",
         audio="reference.wav",
         reference_text="欢迎来到测试。",
-        server_addr="8.92.9.146",
+        server_addr="cosyvoice.example",
         server_port=8001,
         seed=42,
     )
@@ -138,6 +138,6 @@ def test_text2audio_request_helper_is_ergonomic() -> None:
     assert request.inputs["prompt"] == "欢迎来到 OmniRT。"
     assert request.inputs["audio"] == "reference.wav"
     assert request.inputs["reference_text"] == "欢迎来到测试。"
-    assert request.config["server_addr"] == "8.92.9.146"
+    assert request.config["server_addr"] == "cosyvoice.example"
     assert request.config["server_port"] == 8001
     assert request.config["seed"] == 42

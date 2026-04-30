@@ -4,22 +4,13 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import asdict
+import importlib.util
 import json
 from pathlib import Path
 import sys
 from typing import Optional, Sequence
 
-from omnirt.api import describe_model, generate, list_available_models, validate
-from omnirt.backends import resolve_backend
-from omnirt.bench import BenchScenario, get_bench_scenario, list_bench_scenarios, run_bench
 from omnirt.core.presets import available_presets
-from omnirt.core.registry import get_model, list_model_variants, supported_config_for_spec
-from omnirt.core.types import GenerateRequest, OmniRTError
-from omnirt.models import ensure_registered
-from omnirt.models.flashtalk.resident_worker import FlashTalkResidentWorker
-from omnirt.server import create_app
-from omnirt.engine import GrpcWorkerServer, probe_worker_health
-from omnirt.workers import ResidentWorkerService
 
 PUBLIC_TASK_SURFACES = frozenset(
     {
@@ -31,6 +22,42 @@ PUBLIC_TASK_SURFACES = frozenset(
         "text2audio",
     }
 )
+
+
+def generate(*args, **kwargs):
+    from omnirt.api import generate as _generate
+
+    return _generate(*args, **kwargs)
+
+
+def validate(*args, **kwargs):
+    from omnirt.api import validate as _validate
+
+    return _validate(*args, **kwargs)
+
+
+def describe_model(*args, **kwargs):
+    from omnirt.api import describe_model as _describe_model
+
+    return _describe_model(*args, **kwargs)
+
+
+def list_available_models(*args, **kwargs):
+    from omnirt.api import list_available_models as _list_available_models
+
+    return _list_available_models(*args, **kwargs)
+
+
+def list_model_variants(*args, **kwargs):
+    from omnirt.core.registry import list_model_variants as _list_model_variants
+
+    return _list_model_variants(*args, **kwargs)
+
+
+def run_bench(*args, **kwargs):
+    from omnirt.bench import run_bench as _run_bench
+
+    return _run_bench(*args, **kwargs)
 
 
 def task_surface_label(task: str) -> str:
@@ -199,6 +226,35 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output format for the list view. Markdown is deterministic and suitable for docs generation.",
     )
 
+    runtime_parser = subparsers.add_parser("runtime", help="Manage isolated model runtime environments.")
+    runtime_subparsers = runtime_parser.add_subparsers(dest="runtime_command")
+    runtime_install = runtime_subparsers.add_parser("install", help="Install or update a model runtime.")
+    runtime_install.add_argument("name", help="Runtime name, for example flashtalk.")
+    runtime_install.add_argument("--device", default="ascend", help="Runtime device profile, for example ascend.")
+    runtime_install.add_argument("--home", help="Runtime home directory. Default: <omnirt repo>/.omnirt.")
+    runtime_install.add_argument("--repo-dir", help="SoulX-FlashTalk checkout directory.")
+    runtime_install.add_argument("--ckpt-dir", help="FlashTalk checkpoint directory.")
+    runtime_install.add_argument("--wav2vec-dir", help="FlashTalk wav2vec directory.")
+    runtime_install.add_argument("--recreate-venv", action="store_true", help="Remove and recreate the managed virtualenv.")
+    runtime_install.add_argument("--dry-run", action="store_true", help="Show planned actions without installing.")
+    runtime_install.add_argument("--no-update", action="store_true", help="Do not update existing git checkouts.")
+    runtime_install.add_argument("--json", action="store_true", help="Emit machine-readable JSON to stdout.")
+    runtime_status = runtime_subparsers.add_parser("status", help="Inspect a model runtime installation.")
+    runtime_status.add_argument("name", help="Runtime name, for example flashtalk.")
+    runtime_status.add_argument("--device", default="ascend", help="Runtime device profile, for example ascend.")
+    runtime_status.add_argument("--home", help="Runtime home directory. Default: <omnirt repo>/.omnirt.")
+    runtime_status.add_argument("--json", action="store_true", help="Emit machine-readable JSON to stdout.")
+    runtime_env = runtime_subparsers.add_parser("env", help="Print shell exports for a model runtime.")
+    runtime_env.add_argument("name", help="Runtime name, for example flashtalk.")
+    runtime_env.add_argument("--device", default="ascend", help="Runtime device profile, for example ascend.")
+    runtime_env.add_argument("--home", help="Runtime home directory. Default: <omnirt repo>/.omnirt.")
+    runtime_env.add_argument("--shell", action="store_true", help="Emit POSIX shell export commands.")
+    runtime_env.add_argument("--json", action="store_true", help="Emit machine-readable JSON to stdout.")
+    runtime_logs = runtime_subparsers.add_parser("logs", help="Show model runtime log locations.")
+    runtime_logs.add_argument("name", help="Runtime name, for example flashtalk.")
+    runtime_logs.add_argument("--device", default="ascend", help="Runtime device profile, for example ascend.")
+    runtime_logs.add_argument("--home", help="Runtime home directory. Default: <omnirt repo>/.omnirt.")
+
     serve_parser = subparsers.add_parser("serve", help="Run the OmniRT HTTP API server.")
     serve_parser.add_argument("--host", default="127.0.0.1", help="Host interface to bind.")
     serve_parser.add_argument("--port", type=int, default=8000, help="TCP port to bind.")
@@ -230,6 +286,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run a protocol service instead of the OmniRT HTTP API. Currently supports FlashTalk WebSocket.",
     )
     serve_parser.add_argument("--repo-path", help="External SoulX-FlashTalk checkout path for --protocol flashtalk-ws.")
+    serve_parser.add_argument("--server-path", help="FlashTalk WebSocket server path for --protocol flashtalk-ws.")
     serve_parser.add_argument("--ckpt-dir", help="Checkpoint directory for SoulX-FlashTalk.")
     serve_parser.add_argument("--wav2vec-dir", help="wav2vec checkpoint directory for FlashTalk.")
     serve_parser.add_argument("--cpu-offload", action="store_true", help="Enable CPU offload for the FlashTalk runtime.")
@@ -241,7 +298,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     bench_parser = subparsers.add_parser("bench", help="Run a local benchmark scenario.")
     add_request_arguments(bench_parser)
-    bench_parser.add_argument("--scenario", choices=list_bench_scenarios(), help="Built-in benchmark scenario.")
+    bench_parser.add_argument("--scenario", help="Built-in benchmark scenario.")
     bench_parser.add_argument("--concurrency", type=int, help="Concurrent request count.")
     bench_parser.add_argument("--total", type=int, default=10, help="Total measured requests.")
     bench_parser.add_argument("--warmup", type=int, default=1, help="Warmup requests before timing.")
@@ -329,6 +386,23 @@ def parse_remote_worker_specs(specs: Sequence[str]) -> list[dict[str, object]]:
 
 def flashtalk_worker_config_from_args(args: argparse.Namespace) -> dict[str, object]:
     config: dict[str, object] = {}
+    state_values = {}
+    if getattr(args, "protocol", None) == "flashtalk-ws":
+        try:
+            from omnirt.runtime import load_state
+
+            state = load_state("flashtalk", "ascend")
+            state_values = {
+                "repo_path": state.repo_path,
+                "ckpt_dir": state.ckpt_dir,
+                "wav2vec_dir": state.wav2vec_dir,
+                "ascend_env_script": state.env_script,
+                "python_executable": state.python,
+                "launcher": "torchrun",
+                "nproc_per_node": state.nproc_per_node,
+            }
+        except Exception:
+            state_values = {}
     for field in (
         "repo_path",
         "ckpt_dir",
@@ -353,6 +427,8 @@ def flashtalk_worker_config_from_args(args: argparse.Namespace) -> dict[str, obj
         value = getattr(args, field, None)
         if value is not None:
             config[field] = value
+        elif field in state_values:
+            config[field] = state_values[field]
     if getattr(args, "cpu_offload", False):
         config["cpu_offload"] = True
     if getattr(args, "resident_autostart", False):
@@ -362,7 +438,7 @@ def flashtalk_worker_config_from_args(args: argparse.Namespace) -> dict[str, obj
 
 def build_flashtalk_ws_argv(args: argparse.Namespace) -> list[str]:
     argv = [
-        "flashtalk_server.py",
+        str(args.server_path),
         "--host",
         str(args.host),
         "--port",
@@ -387,12 +463,27 @@ def build_flashtalk_ws_argv(args: argparse.Namespace) -> list[str]:
     return argv
 
 
+def default_flashtalk_ws_server_path() -> Path:
+    return Path(__file__).resolve().parents[3] / "model_backends" / "flashtalk" / "flashtalk_ws_server.py"
+
+
 def run_flashtalk_ws_server(args: argparse.Namespace) -> int:
     from omnirt.models.flashtalk.pipeline import FlashTalkPipeline
     from omnirt.models.flashtalk.resident_worker import _repo_on_path, _temporary_cwd
 
     runtime_config = FlashTalkPipeline.resolve_runtime_config(flashtalk_worker_config_from_args(args))
     resolved = argparse.Namespace(**vars(args))
+    if resolved.server_path:
+        resolved.server_path = str(Path(resolved.server_path).expanduser().resolve())
+    else:
+        try:
+            from omnirt.runtime import load_state
+
+            resolved.server_path = load_state("flashtalk", "ascend").server_path
+        except Exception:
+            resolved.server_path = str(default_flashtalk_ws_server_path())
+    if not Path(resolved.server_path).is_file():
+        raise FileNotFoundError(f"FlashTalk WebSocket server not found: {resolved.server_path}")
     resolved.ckpt_dir = str(runtime_config.ckpt_dir)
     resolved.wav2vec_dir = str(runtime_config.wav2vec_dir)
     resolved.cpu_offload = runtime_config.cpu_offload
@@ -406,15 +497,20 @@ def run_flashtalk_ws_server(args: argparse.Namespace) -> int:
     sys.argv = build_flashtalk_ws_argv(resolved)
     try:
         with _repo_on_path(runtime_config.repo_path), _temporary_cwd(runtime_config.repo_path):
-            import importlib
-
-            server_module = importlib.import_module("flashtalk_server")
+            spec = importlib.util.spec_from_file_location("omnirt_flashtalk_ws_server", resolved.server_path)
+            if spec is None or spec.loader is None:
+                raise RuntimeError(f"cannot load FlashTalk WebSocket server: {resolved.server_path}")
+            server_module = importlib.util.module_from_spec(spec)
+            sys.modules[spec.name] = server_module
+            spec.loader.exec_module(server_module)
             return int(server_module.main() or 0)
     finally:
         sys.argv = previous_argv
 
 
 def request_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> GenerateRequest:
+    from omnirt.core.types import GenerateRequest
+
     if args.config:
         return GenerateRequest.from_file(args.config)
 
@@ -603,6 +699,8 @@ def request_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser)
 
 
 def render_model_summary(spec, *, variants=None) -> str:
+    from omnirt.core.registry import supported_config_for_spec
+
     caps = spec.capabilities
     lines = [
         f"model={spec.id}",
@@ -758,7 +856,150 @@ def render_bench_summary(payload: dict) -> str:
     )
 
 
-def scenario_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> BenchScenario:
+def render_runtime_install_result(result, *, dry_run: bool) -> str:
+    lines = [
+        f"runtime={result.state.name}",
+        f"device={result.state.device}",
+        f"profile={result.state.profile}",
+        f"repo_path={result.state.repo_path}",
+        f"ckpt_dir={result.state.ckpt_dir}",
+        f"wav2vec_dir={result.state.wav2vec_dir}",
+        f"runtime_dir={result.state.runtime_dir}",
+        f"state_path={result.state_path or result.state.state_path}",
+    ]
+    if dry_run:
+        lines.append("dry_run=true")
+    if result.commands:
+        lines.append("commands:")
+        for command in result.commands:
+            lines.append("  " + " ".join(str(part) for part in command))
+    return "\n".join(lines)
+
+
+def runtime_status_payload(state) -> dict[str, object]:
+    from omnirt.runtime.state import status_checks
+
+    checks = [
+        {"name": name, "path": str(path), "ok": ok}
+        for name, path, ok in status_checks(state)
+    ]
+    return {
+        "name": state.name,
+        "device": state.device,
+        "profile": state.profile,
+        "state_path": str(state.state_path),
+        "ok": all(item["ok"] for item in checks),
+        "checks": checks,
+    }
+
+
+def render_runtime_status(payload: dict[str, object]) -> str:
+    lines = [
+        f"runtime={payload['name']}",
+        f"device={payload['device']}",
+        f"profile={payload['profile']}",
+        f"state_path={payload['state_path']}",
+        f"ok={str(payload['ok']).lower()}",
+    ]
+    for item in payload["checks"]:
+        status = "ok" if item["ok"] else "missing"
+        lines.append(f"{status}: {item['name']}={item['path']}")
+    return "\n".join(lines)
+
+
+def render_runtime_env(env: dict[str, str], *, shell: bool) -> str:
+    if shell:
+        import shlex
+
+        return "\n".join(f"export {key}={shlex.quote(value)}" for key, value in env.items())
+    return "\n".join(f"{key}={value}" for key, value in env.items())
+
+
+def run_runtime_command(args: argparse.Namespace) -> int:
+    from omnirt.runtime import RuntimeInstaller, load_manifest, load_state
+    from omnirt.runtime.paths import set_omnirt_home
+    from omnirt.runtime.state import runtime_state_path
+
+    if not args.runtime_command:
+        print("error: runtime subcommand is required", file=sys.stderr)
+        return 2
+
+    set_omnirt_home(getattr(args, "home", None))
+
+    try:
+        if args.runtime_command == "install":
+            manifest = load_manifest(args.name, args.device).with_overrides(
+                repo_dir=args.repo_dir,
+                ckpt_dir=args.ckpt_dir,
+                wav2vec_dir=args.wav2vec_dir,
+            )
+            result = RuntimeInstaller(manifest).install(
+                dry_run=args.dry_run,
+                update=not args.no_update,
+                recreate_venv=args.recreate_venv,
+            )
+            if args.json:
+                print(
+                    json.dumps(
+                        {
+                            "name": result.state.name,
+                            "device": result.state.device,
+                            "state_path": str(result.state_path or result.state.state_path),
+                            "dry_run": args.dry_run,
+                            "commands": result.commands,
+                        },
+                        indent=2,
+                        ensure_ascii=False,
+                    )
+                )
+            else:
+                print(render_runtime_install_result(result, dry_run=args.dry_run))
+            return 0
+
+        if args.runtime_command == "status":
+            state = load_state(args.name, args.device)
+            payload = runtime_status_payload(state)
+            if args.json:
+                print(json.dumps(payload, indent=2, ensure_ascii=False))
+            else:
+                print(render_runtime_status(payload))
+            return 0 if payload["ok"] else 2
+
+        if args.runtime_command == "env":
+            state = load_state(args.name, args.device)
+            env = state.to_env()
+            if args.json:
+                print(json.dumps(env, indent=2, ensure_ascii=False))
+            else:
+                print(render_runtime_env(env, shell=args.shell))
+            return 0
+
+        if args.runtime_command == "logs":
+            state = load_state(args.name, args.device)
+            print(Path(state.runtime_dir) / "logs")
+            return 0
+    except FileNotFoundError as exc:
+        if args.runtime_command in {"status", "env", "logs"}:
+            home_hint = f" --home {args.home}" if getattr(args, "home", None) else ""
+            print(
+                f"error: runtime state not found: {runtime_state_path(args.name, args.device)}. "
+                f"Run `omnirt runtime install {args.name} --device {args.device}{home_hint}` first.",
+                file=sys.stderr,
+            )
+        else:
+            print(f"error: {exc}", file=sys.stderr)
+        return 2
+    except (RuntimeError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    print(f"error: unknown runtime subcommand: {args.runtime_command}", file=sys.stderr)
+    return 2
+
+
+def scenario_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser):
+    from omnirt.bench import BenchScenario, get_bench_scenario
+
     if args.scenario:
         base = get_bench_scenario(args.scenario)
         return BenchScenario(
@@ -787,6 +1028,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    if args.command == "runtime":
+        return run_runtime_command(args)
+
     if args.command == "serve":
         if args.protocol == "flashtalk-ws":
             return run_flashtalk_ws_server(args)
@@ -799,6 +1043,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 file=sys.stderr,
             )
             return 2
+        from omnirt.engine import probe_worker_health
+        from omnirt.server import create_app
 
         try:
             remote_workers = parse_remote_worker_specs(args.remote_worker or [])
@@ -835,6 +1081,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     if args.command == "worker":
+        from omnirt.engine import GrpcWorkerServer
         from omnirt.engine import OmniEngine
         from omnirt.engine.redis_store import RedisJobStore
         from omnirt.telemetry import OtlpExporter, TraceRecorder
@@ -857,6 +1104,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     if args.command == "resident-flashtalk-worker":
+        from omnirt.backends import resolve_backend
+        from omnirt.core.registry import get_model
+        from omnirt.engine import GrpcWorkerServer
+        from omnirt.models import ensure_registered
+        from omnirt.models.flashtalk.resident_worker import FlashTalkResidentWorker
+        from omnirt.workers import ResidentWorkerService
+
         ensure_registered()
         worker_runtime = resolve_backend(args.backend)
         model_spec = get_model("soulx-flashtalk-14b", task="audio2video")
@@ -885,6 +1139,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     if args.command == "bench":
+        from omnirt.core.types import OmniRTError
+
         try:
             scenario = scenario_from_args(args, parser)
             report = run_bench(scenario)
@@ -904,6 +1160,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     if args.command == "models":
+        from omnirt.core.types import OmniRTError
+
         if args.model:
             try:
                 spec = describe_model(args.model)
@@ -970,6 +1228,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     request = request_from_args(args, parser)
     if args.command == "validate":
+        from omnirt.core.types import OmniRTError
+
         try:
             validation = validate(request, backend=args.backend)
         except (OmniRTError, ValueError, FileNotFoundError) as exc:
@@ -982,6 +1242,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0 if validation.ok else 2
 
     if getattr(args, "dry_run", False):
+        from omnirt.core.types import OmniRTError
+
         try:
             validation = validate(request, backend=args.backend)
         except (OmniRTError, ValueError, FileNotFoundError) as exc:
@@ -994,6 +1256,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0 if validation.ok else 2
 
     try:
+        from omnirt.core.types import OmniRTError
+
         result = generate(request, backend=args.backend)
     except (OmniRTError, ValueError, FileNotFoundError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -1006,3 +1270,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(render_generate_summary(payload))
         print(json.dumps(payload, indent=2, ensure_ascii=False))
     return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
