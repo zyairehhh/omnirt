@@ -1,0 +1,2533 @@
+diff --git a/flash_talk/configs/infer_params.yaml b/flash_talk/configs/infer_params.yaml
+index cee3384..dccfff1 100644
+--- a/flash_talk/configs/infer_params.yaml
++++ b/flash_talk/configs/infer_params.yaml
+@@ -1,10 +1,10 @@
+-frame_num: 33
+-motion_frames_num: 5
++frame_num: 29
++motion_frames_num: 1
+ tgt_fps: 25
+ sample_rate: 16000
+-sample_steps: 4
++sample_steps: 2
+ sample_shift: 5
+-color_correction_strength: 1.0
++color_correction_strength: 0.0
+ cached_audio_duration: 8
+-height: 768
+-width: 448
+\ No newline at end of file
++height: 704
++width: 416
+\ No newline at end of file
+diff --git a/flash_talk/inference.py b/flash_talk/inference.py
+index 9955cc3..232536a 100644
+--- a/flash_talk/inference.py
++++ b/flash_talk/inference.py
+@@ -1,8 +1,13 @@
+ # Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
+ import yaml
++import os
+ import torch
+ from loguru import logger
+ 
++from flash_talk.src.accelerator import patch_cuda_api_for_npu
++
++patch_cuda_api_for_npu()
++
+ from flash_talk.src.pipeline.flash_talk_pipeline import FlashTalkPipeline
+ from flash_talk.src.distributed.usp_device import get_device, get_parallel_degree
+ 
+@@ -12,15 +17,99 @@ from flash_talk.infinite_talk.utils.multitalk_utils import loudness_norm
+ with open("flash_talk/configs/infer_params.yaml", "r") as f:
+     infer_params = yaml.safe_load(f)
+ 
++_ENV_OVERRIDES = {
++    "frame_num": ("FLASHTALK_FRAME_NUM", int),
++    "motion_frames_num": ("FLASHTALK_MOTION_FRAMES_NUM", int),
++    "tgt_fps": ("FLASHTALK_TGT_FPS", int),
++    "sample_steps": ("FLASHTALK_SAMPLE_STEPS", int),
++    "color_correction_strength": ("FLASHTALK_COLOR_CORRECTION_STRENGTH", float),
++    "height": ("FLASHTALK_HEIGHT", int),
++    "width": ("FLASHTALK_WIDTH", int),
++}
++
++for _param_name, (_env_name, _cast) in _ENV_OVERRIDES.items():
++    if _env_name in os.environ:
++        infer_params[_param_name] = _cast(os.environ[_env_name])
++
++_AUDIO_LOUDNESS_NORM = os.environ.get("FLASHTALK_AUDIO_LOUDNESS_NORM", "1").lower()
++_AUDIO_LOUDNESS_NORM_ENABLED = _AUDIO_LOUDNESS_NORM not in {"0", "false", "no", "off"}
++
++
++def _optional_env(name):
++    value = os.environ.get(name)
++    if value is None:
++        return None
++    value = value.strip()
++    return value or None
++
++
++def _resolve_t5_quant_options(t5_quant=None, t5_quant_dir=None, ckpt_dir=None):
++    quant = t5_quant if t5_quant is not None else _optional_env("FLASHTALK_T5_QUANT")
++    quant_dir = t5_quant_dir if t5_quant_dir is not None else _optional_env("FLASHTALK_T5_QUANT_DIR")
++
++    if quant is not None:
++        quant = quant.lower()
++        if quant not in {"int8", "fp8"}:
++            raise ValueError(
++                f"Unsupported FLASHTALK_T5_QUANT value: {quant!r}. Expected 'int8' or 'fp8'."
++            )
++        if quant_dir is None:
++            quant_dir = ckpt_dir
++
++    return quant, quant_dir
++
++
++def _resolve_wan_quant_options(wan_quant=None, wan_quant_include=None, wan_quant_exclude=None):
++    quant = wan_quant if wan_quant is not None else _optional_env("FLASHTALK_WAN_QUANT")
++    include = wan_quant_include if wan_quant_include is not None else _optional_env("FLASHTALK_WAN_QUANT_INCLUDE")
++    exclude = wan_quant_exclude if wan_quant_exclude is not None else _optional_env("FLASHTALK_WAN_QUANT_EXCLUDE")
++
++    if quant is not None:
++        quant = quant.lower()
++        if quant not in {"int8", "fp8"}:
++            raise ValueError(
++                f"Unsupported FLASHTALK_WAN_QUANT value: {quant!r}. Expected 'int8' or 'fp8'."
++            )
++
++    return quant, include, exclude
++
+ # TODO: support more resolution
+ target_size = (infer_params['height'], infer_params['width'])
+ 
+-def get_pipeline(world_size, ckpt_dir, wav2vec_dir, cpu_offload=False):
++
++def get_pipeline(
++    world_size,
++    ckpt_dir,
++    wav2vec_dir,
++    cpu_offload=False,
++    t5_quant=None,
++    t5_quant_dir=None,
++    wan_quant=None,
++    wan_quant_include=None,
++    wan_quant_exclude=None,
++):
+     cfg = multitalk_14B
++    t5_quant, t5_quant_dir = _resolve_t5_quant_options(
++        t5_quant=t5_quant,
++        t5_quant_dir=t5_quant_dir,
++        ckpt_dir=ckpt_dir,
++    )
++    wan_quant, wan_quant_include, wan_quant_exclude = _resolve_wan_quant_options(
++        wan_quant=wan_quant,
++        wan_quant_include=wan_quant_include,
++        wan_quant_exclude=wan_quant_exclude,
++    )
+ 
+     ulysses_degree, ring_degree = get_parallel_degree(world_size, cfg.num_heads)
+     device = get_device(ulysses_degree, ring_degree)
+     logger.info(f"ulysses_degree: {ulysses_degree}, ring_degree: {ring_degree}, device: {device}")
++    if t5_quant is not None:
++        logger.info(f"Using quantized T5 encoder: quant={t5_quant}, quant_dir={t5_quant_dir}")
++    if wan_quant is not None:
++        logger.info(
++            f"Using experimental quantized WanModel: quant={wan_quant}, "
++            f"include={wan_quant_include}, exclude={wan_quant_exclude}"
++        )
+ 
+     pipeline = FlashTalkPipeline(
+         config=cfg,
+@@ -29,6 +118,11 @@ def get_pipeline(world_size, ckpt_dir, wav2vec_dir, cpu_offload=False):
+         device=device,
+         use_usp=(world_size > 1),
+         cpu_offload=cpu_offload,
++        t5_quant=t5_quant,
++        t5_quant_dir=t5_quant_dir,
++        wan_quant=wan_quant,
++        wan_quant_include=wan_quant_include,
++        wan_quant_exclude=wan_quant_exclude,
+     )
+ 
+     return pipeline
+@@ -47,7 +141,8 @@ def get_base_data(pipeline, input_prompt, cond_image, base_seed):
+     )
+ 
+ def get_audio_embedding(pipeline, audio_array, audio_start_idx=-1, audio_end_idx=-1):
+-    audio_array = loudness_norm(audio_array, infer_params['sample_rate'])
++    if _AUDIO_LOUDNESS_NORM_ENABLED:
++        audio_array = loudness_norm(audio_array, infer_params['sample_rate'])
+     audio_embedding = pipeline.preprocess_audio(audio_array, sr=infer_params['sample_rate'], fps=infer_params['tgt_fps'])
+ 
+     if audio_start_idx == -1 or audio_end_idx == -1:
+@@ -68,3 +163,35 @@ def run_pipeline(pipeline, audio_embedding):
+     sample_frames = (((sample+1)/2).permute(1,2,3,0).clip(0,1) * 255).contiguous()
+     return sample_frames
+ 
++
++def run_pipeline_deferred(pipeline, audio_embedding):
++    """Run pipeline but defer motion-frame encode.
++
++    Returns ``(video_frames, cond_frame)`` where ``video_frames`` is the
++    same ``[T, H, W, C]`` uint8-range tensor as :func:`run_pipeline` and
++    ``cond_frame`` must be passed to ``pipeline.finalize_motion_frames()``
++    after the caller is done with the video data.
++    """
++    audio_embedding = audio_embedding.to(pipeline.device)
++    sample, cond_frame = pipeline.generate_deferred_motion(audio_embedding)
++    sample_frames = (((sample + 1) / 2).permute(1, 2, 3, 0).clip(0, 1) * 255).contiguous()
++    return sample_frames, cond_frame
++
++
++def run_pipeline_stream(pipeline, audio_embedding):
++    """Streaming variant: yields (frame_uint8, is_motion) per decoded frame.
++
++    ``frame_uint8`` has shape ``[n, H, W, C]`` (uint8, 0-255) where *n* is
++    the number of pixel frames produced by one VAE time-step (typically 4,
++    but 1 for the very first step).
++
++    After the generator is fully consumed, ``pipeline.latent_motion_frames``
++    is updated for the next chunk (same as :func:`run_pipeline`).
++    """
++    audio_embedding = audio_embedding.to(pipeline.device)
++    for frame_pixels in pipeline.generate_stream(audio_embedding):
++        # frame_pixels: [1, C, n, H, W], float, [-1, 1]
++        # Convert to [n, H, W, C] uint8
++        fp = frame_pixels[0]  # [C, n, H, W]
++        fp = ((fp + 1) / 2).permute(1, 2, 3, 0).clamp_(0, 1) * 255
++        yield fp.contiguous()
+diff --git a/flash_talk/infinite_talk/distributed/xdit_context_parallel.py b/flash_talk/infinite_talk/distributed/xdit_context_parallel.py
+index 09aa224..7864c01 100644
+--- a/flash_talk/infinite_talk/distributed/xdit_context_parallel.py
++++ b/flash_talk/infinite_talk/distributed/xdit_context_parallel.py
+@@ -1,20 +1,121 @@
+ # Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
+ import torch
+ import torch.nn as nn
+-import torch.cuda.amp as amp
++import os
++import time
++try:
++    import torch_npu  # noqa: F401
++    _amp_device = "npu"
++except ImportError:
++    _amp_device = "cuda"
++import torch.amp as amp
+ from xfuser.core.distributed import (
+     get_sequence_parallel_rank,
+     get_sequence_parallel_world_size,
+     get_sp_group,
+ )
+ from einops import rearrange
+-from xfuser.core.long_ctx_attention import xFuserLongContextAttention
+-import xformers.ops
+-
+-from ..modules.multitalk_model import sinusoidal_embedding_1d
++_IS_NPU = (_amp_device == "npu")
++if _IS_NPU:
++    from yunchang import UlyssesAttention
++    from yunchang.kernels import AttnType as _YCAttnType
++    _usp_attn_instance = None
++else:
++    from xfuser.core.long_ctx_attention import xFuserLongContextAttention
++
++
++def _usp_attention(q, k, v, window_size=(-1, -1)):
++    """Device-agnostic USP attention wrapper."""
++    if _IS_NPU:
++        global _usp_attn_instance
++        if _usp_attn_instance is None:
++            _usp_attn_instance = UlyssesAttention(
++                sequence_process_group=get_sp_group().device_group,
++                attn_type=_YCAttnType.NPU,
++            )
++        return _usp_attn_instance(query=q, key=k, value=v, window_size=window_size)
++    else:
++        return xFuserLongContextAttention()(None, query=q, key=k, value=v, window_size=window_size)
++if _IS_NPU:
++    from flash_talk.src import attention_ops
++else:
++    try:
++        import xformers.ops as attention_ops
++    except (ImportError, ModuleNotFoundError):
++        from flash_talk.src import attention_ops
++
++from ..modules.multitalk_model import sinusoidal_embedding_1d, _parse_block_cache_blocks
+ from ..utils.multitalk_utils import get_attn_map_with_target, split_token_counts_and_frame_ids, normalize_and_scale
+ from ..modules.multitalk_attention import SingleStreamMutiAttention
+ 
++_BLOCK_PROFILE = os.environ.get("FLASHTALK_BLOCK_PROFILE", "0") == "1"
++
++
++def _profile_sync():
++    if _amp_device == "npu" and hasattr(torch, "npu"):
++        torch.npu.synchronize()
++    elif torch.cuda.is_available():
++        torch.cuda.synchronize()
++
++
++def _profile_add(module, name, elapsed):
++    totals = getattr(module, "_profile_totals", None)
++    if totals is None:
++        totals = {}
++        module._profile_totals = totals
++    total, count = totals.get(name, (0.0, 0))
++    totals[name] = (total + elapsed, count + 1)
++
++
++def _dit_block_cache_config(num_layers):
++    if os.environ.get("FLASHTALK_DIT_BLOCK_CACHE", "0") != "1":
++        return False, set(), 0
++
++    interval = int(os.environ.get("FLASHTALK_DIT_BLOCK_CACHE_INTERVAL", "2"))
++    start = int(os.environ.get("FLASHTALK_DIT_BLOCK_CACHE_START", "1"))
++    blocks = _parse_block_cache_blocks(
++        os.environ.get("FLASHTALK_DIT_BLOCK_CACHE_BLOCKS", "all"),
++        num_layers,
++    )
++    return interval > 1, blocks, start
++
++
++def _dit_block_cache_apply(self, x, kwargs):
++    cache_enabled, cache_blocks, cache_start = _dit_block_cache_config(len(self.blocks))
++    if cache_enabled:
++        cache_interval = int(os.environ.get("FLASHTALK_DIT_BLOCK_CACHE_INTERVAL", "2"))
++        cache_step = int(getattr(self, "_dit_block_cache_step", 0))
++        use_cached_blocks = (
++            cache_step >= cache_start
++            and cache_step % cache_interval != 0
++        )
++    else:
++        use_cached_blocks = False
++
++    for block_idx, block in enumerate(self.blocks):
++        cache_key = (tuple(x.shape), x.dtype, x.device.type, x.device.index)
++        cached_delta = getattr(block, "_dit_cache_delta", None)
++        cached_key = getattr(block, "_dit_cache_key", None)
++        if (
++            use_cached_blocks
++            and block_idx in cache_blocks
++            and cached_delta is not None
++            and cached_key == cache_key
++        ):
++            block._dit_cache_hits = getattr(block, "_dit_cache_hits", 0) + 1
++            x = x + cached_delta.to(device=x.device, dtype=x.dtype)
++            continue
++
++        if cache_enabled and block_idx in cache_blocks:
++            block_input = x
++        x = block(x, **kwargs)
++        if cache_enabled and block_idx in cache_blocks:
++            block._dit_cache_delta = (x - block_input).detach()
++            block._dit_cache_key = cache_key
++            block._dit_cache_misses = getattr(block, "_dit_cache_misses", 0) + 1
++
++    return x
++
+ def pad_freqs(original_tensor, target_len):
+     seq_len, s1, s2 = original_tensor.shape
+     pad_size = target_len - seq_len
+@@ -28,45 +129,78 @@ def pad_freqs(original_tensor, target_len):
+     return padded_tensor
+ 
+ 
+-@amp.autocast(enabled=False)
++def pad_freqs_zero(original_tensor, target_len):
++    """Pad with zeros for sin component (no rotation for padded positions)."""
++    seq_len, s1, s2 = original_tensor.shape
++    pad_size = target_len - seq_len
++    padding_tensor = torch.zeros(
++        pad_size,
++        s1,
++        s2,
++        dtype=original_tensor.dtype,
++        device=original_tensor.device)
++    padded_tensor = torch.cat([original_tensor, padding_tensor], dim=0)
++    return padded_tensor
++
++
++@amp.autocast(_amp_device, enabled=False)
+ def rope_apply(x, grid_sizes, freqs):
+     """
+     x:          [B, L, N, C].
+     grid_sizes: [B, 3].
+-    freqs:      [M, C // 2].
++    freqs:      (cos, sin) tuple, each [M, C // 2].
+     """
+     s, n, c = x.size(1), x.size(2), x.size(3) // 2
++
++    freqs_cos, freqs_sin = freqs
++
+     # split freqs
+-    freqs = freqs.split([c - 2 * (c // 3), c // 3, c // 3], dim=1) # [[N, head_dim/2], [N, head_dim/2], [N, head_dim/2]] # T H W 极坐标
++    freqs_cos = freqs_cos.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
++    freqs_sin = freqs_sin.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
+ 
+     # loop over samples
+     output = []
+     for i, (f, h, w) in enumerate(grid_sizes.tolist()):
+         seq_len = f * h * w
+ 
+-        # precompute multipliers
+-        x_i = torch.view_as_complex(x[i, :s].to(torch.float64).reshape(
+-            s, n, -1, 2)) # [L, N, C/2] # 极坐标
+-        freqs_i = torch.cat([
+-            freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
+-            freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
+-            freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
+-        ],
+-                            dim=-1).reshape(seq_len, 1, -1) # seq_lens, 1,  3 * dim / 2 (T H W)
+-
+-        # apply rotary embedding
++        # reshape x to pairs for rotary embedding
++        out_dtype = x.dtype
++        x_pair = x[i, :s].float().reshape(s, n, -1, 2)
++        x_real = x_pair[..., 0]  # [s, n, c]
++        x_imag = x_pair[..., 1]  # [s, n, c]
++
++        # build freq grids (real-valued)
++        cos_i = torch.cat([
++            freqs_cos[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
++            freqs_cos[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
++            freqs_cos[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
++        ], dim=-1).reshape(seq_len, 1, -1)
++
++        sin_i = torch.cat([
++            freqs_sin[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
++            freqs_sin[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
++            freqs_sin[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
++        ], dim=-1).reshape(seq_len, 1, -1)
++
++        # apply sequence parallel slicing
+         sp_size = get_sequence_parallel_world_size()
+         sp_rank = get_sequence_parallel_rank()
+-        freqs_i = pad_freqs(freqs_i, s * sp_size)
++        cos_i = pad_freqs(cos_i, s * sp_size)
++        sin_i = pad_freqs_zero(sin_i, s * sp_size)
+         s_per_rank = s
+-        freqs_i_rank = freqs_i[(sp_rank * s_per_rank):((sp_rank + 1) *
+-                                                       s_per_rank), :, :]
+-        x_i = torch.view_as_real(x_i * freqs_i_rank).flatten(2)
++        cos_i_rank = cos_i[(sp_rank * s_per_rank):((sp_rank + 1) * s_per_rank), :, :]
++        sin_i_rank = sin_i[(sp_rank * s_per_rank):((sp_rank + 1) * s_per_rank), :, :]
++
++        # apply rotary: (x_real + i*x_imag) * (cos + i*sin)
++        out_real = x_real * cos_i_rank - x_imag * sin_i_rank
++        out_imag = x_real * sin_i_rank + x_imag * cos_i_rank
++
++        x_i = torch.stack([out_real, out_imag], dim=-1).flatten(2).to(out_dtype)
+         x_i = torch.cat([x_i, x[i, s:]])
+ 
+         # append to collection
+         output.append(x_i)
+-    return torch.stack(output).float()
++    return torch.stack(output)
+ 
+ 
+ def usp_dit_forward_vace(self, x, vace_context, seq_len, kwargs):
+@@ -114,8 +248,8 @@ def usp_dit_forward(
+         assert clip_fea is not None and y is not None
+     # params
+     device = self.patch_embedding.weight.device
+-    if self.freqs.device != device:
+-        self.freqs = self.freqs.to(device)
++    if self.freqs[0].device != device:
++        self.freqs = (self.freqs[0].to(device), self.freqs[1].to(device))
+ 
+     if self.model_type != 'vace' and y is not None:
+         x = [torch.cat([u, v], dim=0) for u, v in zip(x, y)]
+@@ -133,10 +267,10 @@ def usp_dit_forward(
+     ])
+ 
+     # time embeddings
+-    with amp.autocast(dtype=torch.float32):
++    with amp.autocast(_amp_device, dtype=torch.float32):
+         e = self.time_embedding(
+-            sinusoidal_embedding_1d(self.freq_dim, t).float())
+-        e0 = self.time_projection(e).unflatten(1, (6, self.dim))
++            sinusoidal_embedding_1d(self.freq_dim, t).float()).float()
++        e0 = self.time_projection(e).unflatten(1, (6, self.dim)).float()
+         assert e.dtype == torch.float32 and e0.dtype == torch.float32
+ 
+     # context
+@@ -165,8 +299,7 @@ def usp_dit_forward(
+         x, get_sequence_parallel_world_size(),
+         dim=1)[get_sequence_parallel_rank()]
+ 
+-    for block in self.blocks:
+-        x = block(x, **kwargs)
++    x = _dit_block_cache_apply(self, x, kwargs)
+ 
+     # head
+     x = self.head(x, e)
+@@ -198,10 +331,25 @@ def usp_attn_forward(self,
+         v = self.v(x).view(b, s, n, d)
+         return q, k, v
+ 
++    if _BLOCK_PROFILE:
++        _profile_sync()
++        _profile_start = time.time()
++
+     q, k, v = qkv_fn(x)
++
++    if _BLOCK_PROFILE:
++        _profile_sync()
++        _profile_add(self, "self_qkv", time.time() - _profile_start)
++        _profile_start = time.time()
++
+     q = rope_apply(q, grid_sizes, freqs)
+     k = rope_apply(k, grid_sizes, freqs)
+ 
++    if _BLOCK_PROFILE:
++        _profile_sync()
++        _profile_add(self, "self_rope", time.time() - _profile_start)
++        _profile_start = time.time()
++
+     # TODO: We should use unpaded q,k,v for attention.
+     # k_lens = seq_lens // get_sequence_parallel_world_size()
+     # if k_lens is not None:
+@@ -209,12 +357,12 @@ def usp_attn_forward(self,
+     #     k = torch.cat([u[:l] for u, l in zip(k, k_lens)]).unsqueeze(0)
+     #     v = torch.cat([u[:l] for u, l in zip(v, k_lens)]).unsqueeze(0)
+ 
+-    x = xFuserLongContextAttention()(
+-        None,
+-        query=half(q),
+-        key=half(k),
+-        value=half(v),
+-        window_size=self.window_size)
++    x = _usp_attention(half(q), half(k), half(v), window_size=self.window_size)
++
++    if _BLOCK_PROFILE:
++        _profile_sync()
++        _profile_add(self, "self_usp_attention", time.time() - _profile_start)
++        _profile_start = time.time()
+ 
+     # TODO: padding after attention.
+     # x = torch.cat([x, x.new_zeros(b, s - x.size(1), n, d)], dim=1)
+@@ -222,6 +370,10 @@ def usp_attn_forward(self,
+     # output
+     x = x.flatten(2)
+     x = self.o(x)
++
++    if _BLOCK_PROFILE:
++        _profile_sync()
++        _profile_add(self, "self_out_proj", time.time() - _profile_start)
+     return x
+ 
+ def usp_dit_forward_multitalk(
+@@ -244,8 +396,8 @@ def usp_dit_forward_multitalk(
+     assert clip_fea is not None and y is not None
+     # params
+     device = self.patch_embedding.weight.device
+-    if self.freqs.device != device:
+-        self.freqs = self.freqs.to(device)
++    if self.freqs[0].device != device:
++        self.freqs = (self.freqs[0].to(device), self.freqs[1].to(device))
+ 
+     _, T, H, W = x[0].shape
+     N_t = T // self.patch_size[0]
+@@ -269,10 +421,10 @@ def usp_dit_forward_multitalk(
+     ])
+ 
+     # time embeddings
+-    with amp.autocast(dtype=torch.float32):
++    with amp.autocast(_amp_device, dtype=torch.float32):
+         e = self.time_embedding(
+-            sinusoidal_embedding_1d(self.freq_dim, t).float())
+-        e0 = self.time_projection(e).unflatten(1, (6, self.dim))
++            sinusoidal_embedding_1d(self.freq_dim, t).float()).float()
++        e0 = self.time_projection(e).unflatten(1, (6, self.dim)).float()
+         assert e.dtype == torch.float32 and e0.dtype == torch.float32
+ 
+     # context
+@@ -334,8 +486,7 @@ def usp_dit_forward_multitalk(
+         human_num=human_num,
+         )
+ 
+-    for block in self.blocks:
+-        x = block(x, **kwargs)
++    x = _dit_block_cache_apply(self, x, kwargs)
+ 
+     # head
+     x = self.head(x, e)
+@@ -369,23 +520,41 @@ def usp_attn_forward_multitalk(self,
+         v = self.v(x).view(b, s, n, d)
+         return q, k, v
+ 
++    if _BLOCK_PROFILE:
++        _profile_sync()
++        _profile_start = time.time()
++
+     q, k, v = qkv_fn(x)
++
++    if _BLOCK_PROFILE:
++        _profile_sync()
++        _profile_add(self, "self_qkv", time.time() - _profile_start)
++        _profile_start = time.time()
++
+     q = rope_apply(q, grid_sizes, freqs)
+     k = rope_apply(k, grid_sizes, freqs)
+ 
++    if _BLOCK_PROFILE:
++        _profile_sync()
++        _profile_add(self, "self_rope", time.time() - _profile_start)
++        _profile_start = time.time()
+ 
+-    x = xFuserLongContextAttention()(
+-        None,
+-        query=half(q),
+-        key=half(k),
+-        value=half(v),
+-        window_size=self.window_size)
+ 
++    x = _usp_attention(half(q), half(k), half(v), window_size=self.window_size)
++
++    if _BLOCK_PROFILE:
++        _profile_sync()
++        _profile_add(self, "self_usp_attention", time.time() - _profile_start)
++        _profile_start = time.time()
+ 
+     # output
+     x = x.flatten(2)
+     x = self.o(x)
+ 
++    if _BLOCK_PROFILE:
++        _profile_sync()
++        _profile_add(self, "self_out_proj", time.time() - _profile_start)
++
+     if ref_target_masks is not None:
+         with torch.no_grad():
+             x_ref_attn_map = get_attn_map_with_target(q.type_as(x), k.type_as(x), grid_sizes[0], 
+@@ -461,8 +630,8 @@ def usp_crossattn_multi_forward_multitalk(self,
+         q = rearrange(q, "B H M K -> B M H K")
+         encoder_k = rearrange(encoder_k, "B H M K -> B M H K")
+         encoder_v = rearrange(encoder_v, "B H M K -> B M H K")
+-        attn_bias = xformers.ops.fmha.attn_bias.BlockDiagonalMask.from_seqlens(visual_seqlen, kv_seq)
+-        x = xformers.ops.memory_efficient_attention(q, encoder_k, encoder_v, attn_bias=attn_bias, op=None,)
++        attn_bias = attention_ops.fmha.attn_bias.BlockDiagonalMask.from_seqlens(visual_seqlen, kv_seq)
++        x = attention_ops.memory_efficient_attention(q, encoder_k, encoder_v, attn_bias=attn_bias, op=None,)
+         x = rearrange(x, "B M H K -> B H M K")
+ 
+         # linear transform
+@@ -472,4 +641,4 @@ def usp_crossattn_multi_forward_multitalk(self,
+         x = self.proj(x) 
+         x = self.proj_drop(x)
+ 
+-        return x
+\ No newline at end of file
++        return x
+diff --git a/flash_talk/infinite_talk/modules/multitalk_attention.py b/flash_talk/infinite_talk/modules/multitalk_attention.py
+index 94caa22..11b1835 100644
+--- a/flash_talk/infinite_talk/modules/multitalk_attention.py
++++ b/flash_talk/infinite_talk/modules/multitalk_attention.py
+@@ -6,7 +6,19 @@ from xfuser.core.distributed import (
+     get_sequence_parallel_rank,
+     get_sequence_parallel_world_size,
+ )
+-import xformers.ops
++try:
++    import torch_npu  # noqa: F401
++    _IS_NPU_RUNTIME = True
++except ImportError:
++    _IS_NPU_RUNTIME = False
++
++if _IS_NPU_RUNTIME:
++    from flash_talk.src import attention_ops
++else:
++    try:
++        import xformers.ops as attention_ops
++    except (ImportError, ModuleNotFoundError):
++        from flash_talk.src import attention_ops
+ 
+ from ..utils.multitalk_utils import RotaryPositionalEmbedding1D, normalize_and_scale, split_token_counts_and_frame_ids
+ 
+@@ -82,11 +94,11 @@ class SingleStreamAttention(nn.Module):
+                 sp_size = get_sequence_parallel_world_size()
+                 sp_rank = get_sequence_parallel_rank()
+                 visual_seqlen, _ = split_token_counts_and_frame_ids(N_t, N_h * N_w, sp_size, sp_rank)
+-            attn_bias = xformers.ops.fmha.attn_bias.BlockDiagonalMask.from_seqlens(visual_seqlen, kv_seq)
++            attn_bias = attention_ops.fmha.attn_bias.BlockDiagonalMask.from_seqlens(visual_seqlen, kv_seq)
+         else:
+             attn_bias = None
+ 
+-        x = xformers.ops.memory_efficient_attention(q, encoder_k, encoder_v, attn_bias=attn_bias, op=None,)
++        x = attention_ops.memory_efficient_attention(q, encoder_k, encoder_v, attn_bias=attn_bias, op=None,)
+         x = rearrange(x, "B M H K -> B H M K") 
+ 
+         # linear transform
+@@ -200,7 +212,7 @@ class SingleStreamMutiAttention(SingleStreamAttention):
+         q = rearrange(q, "B H M K -> B M H K")
+         encoder_k = rearrange(encoder_k, "B H M K -> B M H K")
+         encoder_v = rearrange(encoder_v, "B H M K -> B M H K")
+-        x = xformers.ops.memory_efficient_attention(q, encoder_k, encoder_v, attn_bias=None, op=None,)
++        x = attention_ops.memory_efficient_attention(q, encoder_k, encoder_v, attn_bias=None, op=None,)
+         x = rearrange(x, "B M H K -> B H M K")
+ 
+         # linear transform
+@@ -213,4 +225,4 @@ class SingleStreamMutiAttention(SingleStreamAttention):
+         # reshape x to origin shape
+         x = rearrange(x, "(B N_t) S C -> B (N_t S) C", N_t=N_t) 
+ 
+-        return x
+\ No newline at end of file
++        return x
+diff --git a/flash_talk/infinite_talk/modules/multitalk_model.py b/flash_talk/infinite_talk/modules/multitalk_model.py
+index 1fc3030..b506667 100644
+--- a/flash_talk/infinite_talk/modules/multitalk_model.py
++++ b/flash_talk/infinite_talk/modules/multitalk_model.py
+@@ -1,7 +1,14 @@
+ # Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
+ import math
++import os
++import time
+ import torch
+-import torch.cuda.amp as amp
++try:
++    import torch_npu  # noqa: F401
++    _amp_device = "npu"
++except ImportError:
++    _amp_device = "cuda"
++import torch.amp as amp
+ import torch.nn as nn
+ import torch.nn.functional as F
+ 
+@@ -15,11 +22,50 @@ from flash_talk.wan.modules.attention import flash_attention
+ 
+ __all__ = ['WanModel']
+ 
++_BLOCK_PROFILE = os.environ.get("FLASHTALK_BLOCK_PROFILE", "0") == "1"
++_BLOCK_CACHE = os.environ.get("FLASHTALK_DIT_BLOCK_CACHE", "0") == "1"
++_BLOCK_CACHE_INTERVAL = int(os.environ.get("FLASHTALK_DIT_BLOCK_CACHE_INTERVAL", "2"))
++_BLOCK_CACHE_START = int(os.environ.get("FLASHTALK_DIT_BLOCK_CACHE_START", "1"))
++_BLOCK_CACHE_BLOCKS = os.environ.get("FLASHTALK_DIT_BLOCK_CACHE_BLOCKS", "all")
++
++
++def _profile_sync():
++    if _amp_device == "npu" and hasattr(torch, "npu"):
++        torch.npu.synchronize()
++    elif torch.cuda.is_available():
++        torch.cuda.synchronize()
++
++
++def _profile_add(module, name, elapsed):
++    totals = getattr(module, "_profile_totals", None)
++    if totals is None:
++        totals = {}
++        module._profile_totals = totals
++    total, count = totals.get(name, (0.0, 0))
++    totals[name] = (total + elapsed, count + 1)
++
++
++def _parse_block_cache_blocks(spec, num_layers):
++    if spec in ("", "all", "*"):
++        return set(range(num_layers))
++
++    blocks = set()
++    for item in spec.split(","):
++        item = item.strip()
++        if not item:
++            continue
++        if "-" in item:
++            start, end = item.split("-", 1)
++            blocks.update(range(int(start), int(end) + 1))
++        else:
++            blocks.add(int(item))
++    return {idx for idx in blocks if 0 <= idx < num_layers}
++
+ def sinusoidal_embedding_1d(dim, position):
+     # preprocess
+     assert dim % 2 == 0
+     half = dim // 2
+-    position = position.type(torch.float64)
++    position = position.float()
+ 
+     # calculation
+     sinusoid = torch.outer(
+@@ -28,42 +74,66 @@ def sinusoidal_embedding_1d(dim, position):
+     return x
+ 
+ 
+-@amp.autocast(enabled=False)
++@amp.autocast(_amp_device, enabled=False)
+ def rope_params(max_seq_len, dim, theta=10000):
+ 
+     assert dim % 2 == 0
+     freqs = torch.outer(
+         torch.arange(max_seq_len),
+         1.0 / torch.pow(theta,
+-                        torch.arange(0, dim, 2).to(torch.float64).div(dim)))
+-    freqs = torch.polar(torch.ones_like(freqs), freqs)
+-    return freqs
++                        torch.arange(0, dim, 2).float().div(dim)))
++    # Return cos/sin pair instead of complex tensor (NPU doesn't support complex128)
++    return torch.cos(freqs), torch.sin(freqs)
++
++
++def rope_params_cat(params_list, dim=1):
++    """Concatenate multiple (cos, sin) pairs along a dimension."""
++    cos_list = [p[0] for p in params_list]
++    sin_list = [p[1] for p in params_list]
++    return torch.cat(cos_list, dim=dim), torch.cat(sin_list, dim=dim)
+ 
+ 
+-@amp.autocast(enabled=False)
++@amp.autocast(_amp_device, enabled=False)
+ def rope_apply(x, grid_sizes, freqs):
+     s, n, c = x.size(1), x.size(2), x.size(3) // 2
+ 
+-    freqs = freqs.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
++    freqs_cos, freqs_sin = freqs
++
++    freqs_cos = freqs_cos.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
++    freqs_sin = freqs_sin.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
+ 
+     output = []
+     for i, (f, h, w) in enumerate(grid_sizes.tolist()):
+         seq_len = f * h * w
+ 
+-        x_i = torch.view_as_complex(x[i, :s].to(torch.float64).reshape(
+-            s, n, -1, 2))
+-        freqs_i = torch.cat([
+-            freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
+-            freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
+-            freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
+-        ],
+-                            dim=-1).reshape(seq_len, 1, -1)
+-
+-        x_i = torch.view_as_real(x_i * freqs_i).flatten(2)
++        # reshape x to pairs for rotary embedding
++        out_dtype = x.dtype
++        x_pair = x[i, :s].float().reshape(s, n, -1, 2)
++        x_real = x_pair[..., 0]  # [s, n, c]
++        x_imag = x_pair[..., 1]  # [s, n, c]
++
++        # build freq grids (real-valued)
++        cos_i = torch.cat([
++            freqs_cos[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
++            freqs_cos[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
++            freqs_cos[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
++        ], dim=-1).reshape(seq_len, 1, -1)
++
++        sin_i = torch.cat([
++            freqs_sin[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
++            freqs_sin[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
++            freqs_sin[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
++        ], dim=-1).reshape(seq_len, 1, -1)
++
++        # apply rotary: (x_real + i*x_imag) * (cos + i*sin)
++        out_real = x_real * cos_i - x_imag * sin_i
++        out_imag = x_real * sin_i + x_imag * cos_i
++
++        x_i = torch.stack([out_real, out_imag], dim=-1).flatten(2).to(out_dtype)
+         x_i = torch.cat([x_i, x[i, seq_len:]])
+ 
+         output.append(x_i)
+-    return torch.stack(output).float()
++    return torch.stack(output)
+ 
+ 
+ class WanRMSNorm(nn.Module):
+@@ -79,6 +149,8 @@ class WanRMSNorm(nn.Module):
+         Args:
+             x(Tensor): Shape [B, L, C]
+         """
++        if _amp_device == "npu":
++            return torch_npu.npu_rms_norm(x, self.weight, epsilon=self.eps)[0]
+         return self._norm(x.float()).type_as(x) * self.weight
+ 
+     def _norm(self, x):
+@@ -274,31 +346,57 @@ class WanAttentionBlock(nn.Module):
+ 
+         dtype = x.dtype
+         assert e.dtype == torch.float32
+-        with amp.autocast(dtype=torch.float32):
++        with amp.autocast(_amp_device, dtype=torch.float32):
+             e = (self.modulation.to(e.device) + e).chunk(6, dim=1)
+         assert e[0].dtype == torch.float32
+ 
++        if _BLOCK_PROFILE:
++            _profile_sync()
++            _profile_start = time.time()
++
+         # self-attention
++        _sa_input = (self.norm1(x).float() * (1 + e[1]) + e[0]).type_as(x)
+         y, x_ref_attn_map = self.self_attn(
+-            (self.norm1(x).float() * (1 + e[1]) + e[0]).type_as(x), seq_lens, grid_sizes,
++            _sa_input, seq_lens, grid_sizes,
+             freqs, ref_target_masks=ref_target_masks)
+-        with amp.autocast(dtype=torch.float32):
++        with amp.autocast(_amp_device, dtype=torch.float32):
+             x = x + y * e[2]
++
++        if _BLOCK_PROFILE:
++            _profile_sync()
++            _profile_add(self, "self_attn", time.time() - _profile_start)
+         
+         x = x.to(dtype)
+ 
++        if _BLOCK_PROFILE:
++            _profile_sync()
++            _profile_start = time.time()
++
+         # cross-attention of text
+         x = x + self.cross_attn(self.norm3(x), context, context_lens)
+ 
++        if _BLOCK_PROFILE:
++            _profile_sync()
++            _profile_add(self, "text_cross_attn", time.time() - _profile_start)
++            _profile_start = time.time()
++
+         # cross attn of audio
+         x_a = self.audio_cross_attn(self.norm_x(x), encoder_hidden_states=audio_embedding,
+                                         shape=grid_sizes[0], x_ref_attn_map=x_ref_attn_map, human_num=human_num)
+         x = x + x_a
+ 
++        if _BLOCK_PROFILE:
++            _profile_sync()
++            _profile_add(self, "audio_cross_attn", time.time() - _profile_start)
++            _profile_start = time.time()
++
+         y = self.ffn((self.norm2(x).float() * (1 + e[4]) + e[3]).to(dtype))
+-        with amp.autocast(dtype=torch.float32):
++        with amp.autocast(_amp_device, dtype=torch.float32):
+             x = x + y * e[5]
+ 
++        if _BLOCK_PROFILE:
++            _profile_sync()
++            _profile_add(self, "ffn", time.time() - _profile_start)
+ 
+         x = x.to(dtype)
+ 
+@@ -329,7 +427,7 @@ class Head(nn.Module):
+             e(Tensor): Shape [B, C]
+         """
+         assert e.dtype == torch.float32
+-        with amp.autocast(dtype=torch.float32):
++        with amp.autocast(_amp_device, dtype=torch.float32):
+             e = (self.modulation.to(e.device) + e.unsqueeze(1)).chunk(2, dim=1)
+             x = (self.head(self.norm(x) * (1 + e[1]) + e[0]))
+         return x
+@@ -409,7 +507,7 @@ class AudioProjModel(ModelMixin, ConfigMixin):
+         context_tokens = self.proj3(audio_embeds_c).reshape(batch_size_c*N_t, self.context_tokens, self.output_dim)
+ 
+         # normalization and reshape
+-        with amp.autocast(dtype=torch.float32):
++        with amp.autocast(_amp_device, dtype=torch.float32):
+             context_tokens = self.norm(context_tokens)
+         context_tokens = rearrange(context_tokens, "(bz f) m c -> bz f m c", f=video_length)
+ 
+@@ -506,12 +604,11 @@ class WanModel(ModelMixin, ConfigMixin):
+ 
+         assert (dim % num_heads) == 0 and (dim // num_heads) % 2 == 0
+         d = dim // num_heads
+-        self.freqs = torch.cat([
++        self.freqs = rope_params_cat([
+             rope_params(1024, d - 4 * (d // 6)),
+             rope_params(1024, 2 * (d // 6)),
+             rope_params(1024, 2 * (d // 6))
+-        ],
+-                               dim=1)
++        ], dim=1)
+ 
+         if model_type == 'i2v':
+             self.img_emb = MLPProj(1280, dim)
+@@ -535,12 +632,18 @@ class WanModel(ModelMixin, ConfigMixin):
+             
+     def init_freqs(self):
+         d = self.dim // self.num_heads
+-        self.freqs = torch.cat([
++        self.freqs = rope_params_cat([
+             rope_params(1024, d - 4 * (d // 6)),
+             rope_params(1024, 2 * (d // 6)),
+             rope_params(1024, 2 * (d // 6))
+-        ],
+-                               dim=1)
++        ], dim=1)
++
++    def reset_dit_block_cache(self):
++        for block in self.blocks:
++            block._dit_cache_delta = None
++            block._dit_cache_key = None
++            block._dit_cache_hits = 0
++            block._dit_cache_misses = 0
+ 
+     def forward(
+             self,
+@@ -557,8 +660,8 @@ class WanModel(ModelMixin, ConfigMixin):
+         
+         # params
+         device = self.patch_embedding.weight.device
+-        if self.freqs.device != device:
+-            self.freqs = self.freqs.to(device)
++        if self.freqs[0].device != device:
++            self.freqs = (self.freqs[0].to(device), self.freqs[1].to(device))
+ 
+         _, T, H, W = x[0].shape
+         N_t = T // self.patch_size[0]
+@@ -583,10 +686,10 @@ class WanModel(ModelMixin, ConfigMixin):
+         ])
+ 
+         # time embeddings
+-        with amp.autocast(dtype=torch.float32):
++        with amp.autocast(_amp_device, dtype=torch.float32):
+             e = self.time_embedding(
+-                sinusoidal_embedding_1d(self.freq_dim, t).float())
+-            e0 = self.time_projection(e).unflatten(1, (6, self.dim))
++                sinusoidal_embedding_1d(self.freq_dim, t).float()).float()
++            e0 = self.time_projection(e).float().unflatten(1, (6, self.dim))
+             assert e.dtype == torch.float32 and e0.dtype == torch.float32
+ 
+         # text embedding
+@@ -649,8 +752,42 @@ class WanModel(ModelMixin, ConfigMixin):
+             ref_target_masks=token_ref_target_masks,
+             human_num=human_num,
+             )
+-        for block in self.blocks:
++        if _BLOCK_CACHE:
++            cache_blocks = getattr(self, "_dit_block_cache_blocks", None)
++            if cache_blocks is None:
++                cache_blocks = _parse_block_cache_blocks(_BLOCK_CACHE_BLOCKS, len(self.blocks))
++                self._dit_block_cache_blocks = cache_blocks
++            cache_step = int(getattr(self, "_dit_block_cache_step", 0))
++            use_cached_blocks = (
++                _BLOCK_CACHE_INTERVAL > 1
++                and cache_step >= _BLOCK_CACHE_START
++                and cache_step % _BLOCK_CACHE_INTERVAL != 0
++            )
++        else:
++            cache_blocks = set()
++            use_cached_blocks = False
++
++        for block_idx, block in enumerate(self.blocks):
++            cache_key = (tuple(x.shape), x.dtype, x.device.type, x.device.index)
++            cached_delta = getattr(block, "_dit_cache_delta", None)
++            cached_key = getattr(block, "_dit_cache_key", None)
++            if (
++                use_cached_blocks
++                and block_idx in cache_blocks
++                and cached_delta is not None
++                and cached_key == cache_key
++            ):
++                block._dit_cache_hits = getattr(block, "_dit_cache_hits", 0) + 1
++                x = x + cached_delta.to(device=x.device, dtype=x.dtype)
++                continue
++
++            if _BLOCK_CACHE and block_idx in cache_blocks:
++                block_input = x
+             x = block(x, **kwargs)
++            if _BLOCK_CACHE and block_idx in cache_blocks:
++                block._dit_cache_delta = (x - block_input).detach()
++                block._dit_cache_key = cache_key
++                block._dit_cache_misses = getattr(block, "_dit_cache_misses", 0) + 1
+ 
+         # head
+         x = self.head(x, e)
+@@ -708,4 +845,4 @@ class WanModel(ModelMixin, ConfigMixin):
+                 nn.init.normal_(m.weight, std=.02)
+ 
+         # init output layer
+-        nn.init.zeros_(self.head.head.weight)
+\ No newline at end of file
++        nn.init.zeros_(self.head.head.weight)
+diff --git a/flash_talk/src/accelerator.py b/flash_talk/src/accelerator.py
+new file mode 100644
+index 0000000..452a822
+--- /dev/null
++++ b/flash_talk/src/accelerator.py
+@@ -0,0 +1,104 @@
++import contextlib
++import os
++
++import torch
++
++
++def _load_torch_npu():
++    try:
++        import torch_npu  # noqa: F401
++    except (ImportError, ModuleNotFoundError):
++        return False
++    return hasattr(torch, "npu") and torch.npu.is_available()
++
++
++def device_type():
++    if torch.cuda.is_available():
++        return "cuda"
++    if _load_torch_npu():
++        return "npu"
++    return "cpu"
++
++
++def backend():
++    current = device_type()
++    if current == "cuda":
++        return "nccl"
++    if current == "npu":
++        return "hccl"
++    return "gloo"
++
++
++def default_device(index=None):
++    current = device_type()
++    if current == "cpu":
++        return torch.device("cpu")
++    if index is None:
++        index = int(os.environ.get("LOCAL_RANK", 0))
++    return torch.device(f"{current}:{index}")
++
++
++def set_device(index):
++    current = device_type()
++    if current == "cuda":
++        torch.cuda.set_device(index)
++    elif current == "npu":
++        torch.npu.set_device(index)
++
++
++def synchronize():
++    current = device_type()
++    if current == "cuda":
++        torch.cuda.synchronize()
++    elif current == "npu":
++        torch.npu.synchronize()
++
++
++def empty_cache():
++    current = device_type()
++    if current == "cuda":
++        torch.cuda.empty_cache()
++    elif current == "npu":
++        torch.npu.empty_cache()
++
++
++def ipc_collect():
++    current = device_type()
++    if current == "cuda":
++        torch.cuda.ipc_collect()
++    elif current == "npu" and hasattr(torch.npu, "ipc_collect"):
++        torch.npu.ipc_collect()
++
++
++def current_device():
++    current = device_type()
++    if current == "cuda":
++        return torch.cuda.current_device()
++    if current == "npu":
++        return torch.npu.current_device()
++    return "cpu"
++
++
++def autocast(dtype):
++    current = device_type()
++    if current == "cuda":
++        return torch.cuda.amp.autocast(dtype=dtype)
++    if current == "npu":
++        if hasattr(torch.npu, "amp") and hasattr(torch.npu.amp, "autocast"):
++            return torch.npu.amp.autocast(dtype=dtype)
++        return torch.amp.autocast("npu", dtype=dtype)
++    return contextlib.nullcontext()
++
++
++def patch_cuda_api_for_npu():
++    if device_type() != "npu":
++        return
++
++    torch.cuda.current_device = torch.npu.current_device
++    torch.cuda.set_device = torch.npu.set_device
++    torch.cuda.synchronize = torch.npu.synchronize
++    torch.cuda.empty_cache = torch.npu.empty_cache
++    if hasattr(torch.npu, "ipc_collect"):
++        torch.cuda.ipc_collect = torch.npu.ipc_collect
++    if hasattr(torch.npu, "amp") and hasattr(torch.npu.amp, "autocast"):
++        torch.cuda.amp.autocast = torch.npu.amp.autocast
+diff --git a/flash_talk/src/attention_ops.py b/flash_talk/src/attention_ops.py
+new file mode 100644
+index 0000000..4f6de2e
+--- /dev/null
++++ b/flash_talk/src/attention_ops.py
+@@ -0,0 +1,70 @@
++import torch
++import torch.nn.functional as F
++
++try:
++    import torch_npu
++    _HAS_NPU_FUSION = hasattr(torch_npu, 'npu_fusion_attention')
++except ImportError:
++    _HAS_NPU_FUSION = False
++
++
++class BlockDiagonalMask:
++    def __init__(self, q_seqlens, kv_seqlens):
++        self.q_seqlens = [int(v) for v in q_seqlens]
++        self.kv_seqlens = [int(v) for v in kv_seqlens]
++
++    @classmethod
++    def from_seqlens(cls, q_seqlens, kv_seqlens):
++        return cls(q_seqlens, kv_seqlens)
++
++
++class _AttnBias:
++    BlockDiagonalMask = BlockDiagonalMask
++
++
++class _Fmha:
++    attn_bias = _AttnBias
++
++
++fmha = _Fmha()
++
++
++def _attention(q, k, v):
++    # q/k/v: [B, S, N, D] (BSND) — xformers convention
++    if _HAS_NPU_FUSION and q.device.type == 'npu':
++        # npu_fusion_attention with BSND layout
++        out = torch_npu.npu_fusion_attention(
++            q, k, v,
++            head_num=q.shape[2],
++            input_layout="BSND",
++            scale=q.shape[-1] ** -0.5,
++            pre_tockens=65535,
++            next_tockens=65535,
++        )[0]
++        return out
++    q = q.permute(0, 2, 1, 3)
++    k = k.permute(0, 2, 1, 3)
++    v = v.permute(0, 2, 1, 3)
++    out = F.scaled_dot_product_attention(q, k, v)
++    return out.permute(0, 2, 1, 3).contiguous()
++
++
++def memory_efficient_attention(q, k, v, attn_bias=None, op=None):
++    del op
++    if attn_bias is None:
++        return _attention(q, k, v)
++
++    out = torch.empty_like(q)
++    q_start = 0
++    kv_start = 0
++    for q_len, kv_len in zip(attn_bias.q_seqlens, attn_bias.kv_seqlens):
++        q_end = q_start + q_len
++        kv_end = kv_start + kv_len
++        out[:, q_start:q_end] = _attention(
++            q[:, q_start:q_end],
++            k[:, kv_start:kv_end],
++            v[:, kv_start:kv_end],
++        )
++        q_start = q_end
++        kv_start = kv_end
++    return out
+diff --git a/flash_talk/src/distributed/usp_device.py b/flash_talk/src/distributed/usp_device.py
+index 80cec10..07186b6 100644
+--- a/flash_talk/src/distributed/usp_device.py
++++ b/flash_talk/src/distributed/usp_device.py
+@@ -4,6 +4,8 @@ import datetime
+ import torch
+ import torch.distributed as dist
+ 
++from flash_talk.src.accelerator import backend, default_device, set_device
++
+ def get_parallel_degree(world_size, num_heads):
+     # ulysses_degree is faster, and must be a divisor of num_heads
+     ulysses_degree = math.gcd(world_size, num_heads)
+@@ -18,7 +20,7 @@ def get_device(ulysses_degree, ring_degree):
+             get_world_group,
+         )
+ 
+-        dist.init_process_group("nccl", timeout=datetime.timedelta(hours=24*7))
++        dist.init_process_group(backend(), timeout=datetime.timedelta(hours=24*7))
+         init_distributed_environment(rank=dist.get_rank(), world_size=dist.get_world_size())
+         initialize_model_parallel(
+             sequence_parallel_degree=dist.get_world_size(),
+@@ -26,10 +28,10 @@ def get_device(ulysses_degree, ring_degree):
+             ulysses_degree=ulysses_degree
+         )
+ 
+-        device = torch.device(f"cuda:{get_world_group().rank}")
+-        torch.cuda.set_device(get_world_group().rank)
++        device = default_device(get_world_group().rank)
++        set_device(get_world_group().rank)
+ 
+         logger.info(f'rank={get_world_group().rank} device={str(device)}')
+     else:
+-        device = "cuda"
+-    return device
+\ No newline at end of file
++        device = default_device()
++    return device
+diff --git a/flash_talk/src/pipeline/flash_talk_pipeline.py b/flash_talk/src/pipeline/flash_talk_pipeline.py
+index cadfa54..0250e76 100644
+--- a/flash_talk/src/pipeline/flash_talk_pipeline.py
++++ b/flash_talk/src/pipeline/flash_talk_pipeline.py
+@@ -17,10 +17,20 @@ from flash_talk.wan.modules import (CLIPModel, T5EncoderModel, WanVAE)
+ from flash_talk.infinite_talk.modules.multitalk_model import WanModel
+ from flash_talk.infinite_talk.audio_analysis.wav2vec2 import Wav2Vec2Model
+ from flash_talk.infinite_talk.utils.multitalk_utils import match_and_blend_colors_torch, resize_and_centercrop
++from flash_talk.src.accelerator import default_device, device_type, empty_cache, synchronize, patch_cuda_api_for_npu
++from flash_talk.src.quantization import (
++    DEFAULT_WAN_QUANT_EXCLUDE,
++    DEFAULT_WAN_QUANT_INCLUDE,
++    collect_quantizable_modules,
++    quantize_model_weights,
++)
++
++patch_cuda_api_for_npu()
+ 
+ # compile models to speedup inference
+-COMPILE_MODEL = True
+-COMPILE_VAE = True
++# Enable torch.compile on NPU via env var FLASHTALK_COMPILE=1
++COMPILE_MODEL = device_type() == "cuda" or (device_type() == "npu" and os.environ.get("FLASHTALK_COMPILE", "0") == "1")
++COMPILE_VAE = device_type() == "cuda"
+ # use parallel vae to speedup decode/encode
+ USE_PARALLEL_VAE = True
+ 
+@@ -51,9 +61,14 @@ class FlashTalkPipeline:
+         config,
+         checkpoint_dir,
+         wav2vec_dir,
+-        device="cuda",
++        device=None,
+         use_usp=False,
+         cpu_offload=False,
++        t5_quant=None,
++        t5_quant_dir=None,
++        wan_quant=None,
++        wan_quant_include=None,
++        wan_quant_exclude=None,
+         num_timesteps=1000,
+         use_timestep_transform=True,
+     ):
+@@ -70,12 +85,17 @@ class FlashTalkPipeline:
+             use_usp (`bool`, *optional*, defaults to False):
+                 Enable distribution strategy of USP.
+         """
+-        self.device = device
++        self.device = device or default_device()
+         self.config = config
+         self.rank = dist.get_rank() if dist.is_initialized() else 0
+         self.use_usp = use_usp and dist.is_initialized()
+         self.param_dtype = config.param_dtype
+         self.cpu_offload = cpu_offload and not self.use_usp
++        self.t5_quant = t5_quant
++        self.t5_quant_dir = t5_quant_dir or checkpoint_dir
++        self.wan_quant = wan_quant
++        self.wan_quant_include = wan_quant_include or list(DEFAULT_WAN_QUANT_INCLUDE)
++        self.wan_quant_exclude = wan_quant_exclude or list(DEFAULT_WAN_QUANT_EXCLUDE)
+ 
+         self.text_encoder = T5EncoderModel(
+             text_len=config.text_len,
+@@ -83,6 +103,8 @@ class FlashTalkPipeline:
+             device=self.device,
+             checkpoint_path=os.path.join(checkpoint_dir, config.t5_checkpoint),
+             tokenizer_path=os.path.join(checkpoint_dir, config.t5_tokenizer),
++            quant=self.t5_quant,
++            quant_dir=self.t5_quant_dir,
+         )
+ 
+         self.vae_stride = config.vae_stride
+@@ -111,6 +133,9 @@ class FlashTalkPipeline:
+ 
+         self.model.eval().requires_grad_(False)
+ 
++        if self.wan_quant is not None:
++            self._apply_wan_quantization()
++
+         if use_usp:
+             from xfuser.core.distributed import get_sequence_parallel_world_size
+ 
+@@ -135,9 +160,12 @@ class FlashTalkPipeline:
+         self.sample_neg_prompt = config.sample_neg_prompt
+         self.num_timesteps = num_timesteps
+         self.use_timestep_transform = use_timestep_transform
++        self.block_profile = os.environ.get("FLASHTALK_BLOCK_PROFILE", "0") == "1"
+ 
+-        if COMPILE_MODEL and not self.cpu_offload:
++        if COMPILE_MODEL and not self.cpu_offload and self.wan_quant is None:
+             self.model = torch.compile(self.model)
++        elif COMPILE_MODEL and self.wan_quant is not None:
++            logger.info("Skipping torch.compile for quantized WanModel because optimum-quanto is not torch.compile compatible.")
+         if COMPILE_VAE and not self.cpu_offload:
+             self.vae.encode = torch.compile(self.vae.encode)
+             self.vae.decode = torch.compile(self.vae.decode)
+@@ -146,6 +174,38 @@ class FlashTalkPipeline:
+         self.audio_encoder.feature_extractor._freeze_parameters()
+         self.wav2vec_feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(wav2vec_dir, local_files_only=True)
+ 
++    def _apply_wan_quantization(self):
++        targets = collect_quantizable_modules(
++            self.model,
++            include=self.wan_quant_include,
++            exclude=self.wan_quant_exclude,
++        )
++        if not targets:
++            logger.warning(
++                "WanModel quantization requested but no supported modules matched include={} exclude={}",
++                self.wan_quant_include,
++                self.wan_quant_exclude,
++            )
++            return
++
++        target_preview = ", ".join(name for name, _ in targets[:8])
++        if len(targets) > 8:
++            target_preview += ", ..."
++        logger.info(
++            "Quantizing WanModel weights: quant={} targets={} include={} exclude={} sample=[{}]",
++            self.wan_quant,
++            len(targets),
++            self.wan_quant_include,
++            self.wan_quant_exclude,
++            target_preview,
++        )
++        quantize_model_weights(
++            self.model,
++            quant=self.wan_quant,
++            include=self.wan_quant_include,
++            exclude=self.wan_quant_exclude,
++        )
++
+     @torch.no_grad()
+     def prepare_params(self,
+                         input_prompt,
+@@ -164,7 +224,7 @@ class FlashTalkPipeline:
+         context = self.text_encoder([input_prompt], self.device)[0]
+         if self.cpu_offload:
+             self.text_encoder.model.cpu()
+-            torch.cuda.empty_cache()
++            empty_cache()
+ 
+         self.frame_num = frame_num
+         self.motion_frames_num = motion_frames_num
+@@ -189,7 +249,7 @@ class FlashTalkPipeline:
+         clip_context = self.clip.visual(cond_image_tensor[:, :, -1:, :, :]).to(self.param_dtype)
+         if self.cpu_offload:
+             self.clip.model.cpu()
+-            torch.cuda.empty_cache()
++            empty_cache()
+ 
+         video_frames = torch.zeros(1, cond_image_tensor.shape[1], frame_num-cond_image_tensor.shape[2], self.target_h, self.target_w).to(dtype=self.param_dtype, device=self.device)
+ 
+@@ -243,7 +303,7 @@ class FlashTalkPipeline:
+ 
+         if self.cpu_offload:
+             self.vae.model.cpu()
+-            torch.cuda.empty_cache()
++            empty_cache()
+ 
+         return
+ 
+@@ -270,6 +330,83 @@ class FlashTalkPipeline:
+         audio_emb = rearrange(audio_emb, "b s d -> s b d")
+         return audio_emb
+ 
++    def _reset_block_profile(self):
++        if not self.block_profile:
++            return
++        model = getattr(self.model, "_orig_mod", self.model)
++        for idx, block in enumerate(model.blocks):
++            block._profile_index = idx
++            block._profile_totals = {}
++
++    def _log_block_profile(self):
++        if not self.block_profile or self.rank != 0:
++            return
++        model = getattr(self.model, "_orig_mod", self.model)
++        names = (
++            "self_attn",
++            "self_qkv",
++            "self_rope",
++            "self_usp_attention",
++            "self_out_proj",
++            "text_cross_attn",
++            "audio_cross_attn",
++            "ffn",
++        )
++        component_totals = {name: 0.0 for name in names}
++        component_counts = {name: 0 for name in names}
++        logger.info("[block-profile] block self_attn text_cross_attn audio_cross_attn ffn total calls")
++        for idx, block in enumerate(model.blocks):
++            totals = dict(getattr(block, "_profile_totals", {}))
++            self_attn_totals = getattr(block.self_attn, "_profile_totals", {})
++            for name, (total, count) in self_attn_totals.items():
++                prev_total, prev_count = totals.get(name, (0.0, 0))
++                totals[name] = (prev_total + total, prev_count + count)
++            if not totals:
++                continue
++            values = {}
++            counts = {}
++            for name in names:
++                total, count = totals.get(name, (0.0, 0))
++                values[name] = total
++                counts[name] = count
++                component_totals[name] += total
++                component_counts[name] += count
++            block_total = (
++                values["self_attn"]
++                + values["text_cross_attn"]
++                + values["audio_cross_attn"]
++                + values["ffn"]
++            )
++            block_calls = max(counts.values()) if counts else 0
++            logger.info(
++                "[block-profile] "
++                f"{idx:02d} "
++                f"{values['self_attn']:.4f}s "
++                f"{values['text_cross_attn']:.4f}s "
++                f"{values['audio_cross_attn']:.4f}s "
++                f"{values['ffn']:.4f}s "
++                f"{block_total:.4f}s "
++                f"{block_calls}"
++            )
++        total = (
++            component_totals["self_attn"]
++            + component_totals["text_cross_attn"]
++            + component_totals["audio_cross_attn"]
++            + component_totals["ffn"]
++        )
++        logger.info(
++            "[block-profile] total "
++            f"self_attn={component_totals['self_attn']:.4f}s/{component_counts['self_attn']} "
++            f"self_qkv={component_totals['self_qkv']:.4f}s/{component_counts['self_qkv']} "
++            f"self_rope={component_totals['self_rope']:.4f}s/{component_counts['self_rope']} "
++            f"self_usp_attention={component_totals['self_usp_attention']:.4f}s/{component_counts['self_usp_attention']} "
++            f"self_out_proj={component_totals['self_out_proj']:.4f}s/{component_counts['self_out_proj']} "
++            f"text_cross_attn={component_totals['text_cross_attn']:.4f}s/{component_counts['text_cross_attn']} "
++            f"audio_cross_attn={component_totals['audio_cross_attn']:.4f}s/{component_counts['audio_cross_attn']} "
++            f"ffn={component_totals['ffn']:.4f}s/{component_counts['ffn']} "
++            f"grand={total:.4f}s"
++        )
++
+     @torch.no_grad()
+     def generate(self, audio_embedding):
+         if self.cpu_offload:
+@@ -280,6 +417,10 @@ class FlashTalkPipeline:
+             self.arg_c.update({
+                 "audio": audio_embedding,
+             })
++            self._reset_block_profile()
++            model_for_cache = getattr(self.model, "_orig_mod", self.model)
++            if os.environ.get("FLASHTALK_DIT_BLOCK_CACHE", "0") == "1" and hasattr(model_for_cache, "reset_dit_block_cache"):
++                model_for_cache.reset_dit_block_cache()
+ 
+             # sample videos
+             latent = torch.randn(
+@@ -292,18 +433,33 @@ class FlashTalkPipeline:
+ 
+             latent[:, :self.latent_motion_frames.shape[1]] = self.latent_motion_frames
+ 
++            # Step-level noise cache: reuse noise prediction on cached steps
++            _cache_interval = int(os.environ.get("FLASHTALK_CACHE_INTERVAL", "0"))
++            _cached_noise = None
++
+             for i in range(len(self.timesteps)-1):
+                 timestep = self.timesteps[i]
+                 latent_model_input = [latent]
+ 
+-                torch.cuda.synchronize()
++                synchronize()
+                 start_time = time.time()
+ 
+-                # inference without CFG
+-                noise_pred_cond = self.model(
+-                    latent_model_input, t=timestep, **self.arg_c)[0]
+-
+-                torch.cuda.synchronize()
++                if _cache_interval > 0 and i > 0 and i % _cache_interval != 0 and _cached_noise is not None:
++                    # Reuse cached noise prediction
++                    noise_pred_cond = _cached_noise
++                    if self.rank == 0:
++                        print(f'[generate] step {i}: reusing cached noise (skip model)')
++                else:
++                    # inference without CFG
++                    if hasattr(model_for_cache, "_dit_block_cache_step"):
++                        model_for_cache._dit_block_cache_step = i
++                    else:
++                        setattr(model_for_cache, "_dit_block_cache_step", i)
++                    noise_pred_cond = self.model(
++                        latent_model_input, t=timestep, **self.arg_c)[0]
++                    _cached_noise = noise_pred_cond
++
++                synchronize()
+                 end_time = time.time()
+                 if self.rank == 0:
+                     print(f'[generate] model denoise per step: {end_time - start_time}s')
+@@ -319,42 +475,282 @@ class FlashTalkPipeline:
+ 
+                 latent[:, :self.latent_motion_frames.shape[1]] = self.latent_motion_frames
+ 
++            if os.environ.get("FLASHTALK_DIT_BLOCK_CACHE", "0") == "1" and self.rank == 0:
++                cache_hits = sum(getattr(block, "_dit_cache_hits", 0) for block in model_for_cache.blocks)
++                cache_misses = sum(getattr(block, "_dit_cache_misses", 0) for block in model_for_cache.blocks)
++                print(f"[generate] dit block cache: hits={cache_hits}, misses={cache_misses}")
++
++            self._log_block_profile()
++
+             if self.cpu_offload:
+                 self.model.cpu()
+-                torch.cuda.empty_cache()
++                empty_cache()
+                 self.vae.model.to(self.device)
+ 
+-            torch.cuda.synchronize()
++            synchronize()
+             start_decode_time = time.time()
+             videos = self.vae.decode(latent.to(self.param_dtype))
+-            torch.cuda.synchronize()
++            synchronize()
+             end_decode_time = time.time()
+             if self.rank == 0:
+                 print(f'[generate] decode video frames: {end_decode_time - start_decode_time}s')
+         
+-        torch.cuda.synchronize()
++        synchronize()
+         start_color_correction_time = time.time()
+         if self.color_correction_strength > 0.0:
+             videos = match_and_blend_colors_torch(videos, self.original_color_reference, self.color_correction_strength)
+ 
+         cond_frame = videos[:, :, -self.motion_frames_num:].to(self.device)
+-        torch.cuda.synchronize()
++        synchronize()
+         end_color_correction_time = time.time()
+         if self.rank == 0:
+             print(f'[generate] color correction: {end_color_correction_time - start_color_correction_time}s')
+ 
+-        torch.cuda.synchronize()
++        synchronize()
+         start_encode_time = time.time()
+         self.latent_motion_frames = self.vae.encode(cond_frame)
+-        torch.cuda.synchronize()
++        synchronize()
+         end_encode_time = time.time()
+         if self.rank == 0:
+             print(f'[generate] encode motion frames: {end_encode_time - start_encode_time}s')
+ 
+         if self.cpu_offload:
+             self.vae.model.cpu()
+-            torch.cuda.empty_cache()
++            empty_cache()
+ 
+         gen_video_samples = videos #[:, :, self.motion_frames_num:]
+ 
+         return gen_video_samples[0].to(torch.float32)
++
++    @torch.no_grad()
++    def generate_deferred_motion(self, audio_embedding):
++        """Like generate() but defers motion-frame VAE encode.
++
++        Returns ``(video_tensor, cond_frame)`` where *video_tensor* is the
++        same output as :meth:`generate` and *cond_frame* is the pixel tensor
++        that needs to be encoded via :meth:`finalize_motion_frames`.  This
++        lets the caller overlap JPEG encoding (CPU) with motion-frame VAE
++        encoding (NPU).
++        """
++        if self.cpu_offload:
++            self.model.to(self.device)
++
++        with torch.no_grad():
++            self.arg_c.update({"audio": audio_embedding})
++            self._reset_block_profile()
++            model_for_cache = getattr(self.model, "_orig_mod", self.model)
++            if os.environ.get("FLASHTALK_DIT_BLOCK_CACHE", "0") == "1" and hasattr(model_for_cache, "reset_dit_block_cache"):
++                model_for_cache.reset_dit_block_cache()
++
++            latent = torch.randn(
++                16, (self.frame_num - 1) // 4 + 1,
++                self.lat_h, self.lat_w,
++                dtype=self.param_dtype, device=self.device,
++                generator=self.generator,
++            )
++            latent[:, :self.latent_motion_frames.shape[1]] = self.latent_motion_frames
++
++            _cache_interval = int(os.environ.get("FLASHTALK_CACHE_INTERVAL", "0"))
++            _cached_noise = None
++
++            for i in range(len(self.timesteps) - 1):
++                timestep = self.timesteps[i]
++                latent_model_input = [latent]
++                synchronize()
++                start_time = time.time()
++
++                if _cache_interval > 0 and i > 0 and i % _cache_interval != 0 and _cached_noise is not None:
++                    noise_pred_cond = _cached_noise
++                else:
++                    if hasattr(model_for_cache, "_dit_block_cache_step"):
++                        model_for_cache._dit_block_cache_step = i
++                    else:
++                        setattr(model_for_cache, "_dit_block_cache_step", i)
++                    noise_pred_cond = self.model(
++                        latent_model_input, t=timestep, **self.arg_c)[0]
++                    _cached_noise = noise_pred_cond
++
++                synchronize()
++                end_time = time.time()
++                if self.rank == 0:
++                    print(f'[generate_deferred] model denoise per step: {end_time - start_time}s')
++
++                noise_pred = -noise_pred_cond
++                t_i = self.timesteps[i][:, None, None, None] / self.num_timesteps
++                t_i_1 = self.timesteps[i + 1][:, None, None, None] / self.num_timesteps
++                x_0 = latent + noise_pred * t_i
++                latent = (1 - t_i_1) * x_0 + t_i_1 * torch.randn(
++                    x_0.size(), dtype=x_0.dtype, device=self.device, generator=self.generator,
++                )
++                latent[:, :self.latent_motion_frames.shape[1]] = self.latent_motion_frames
++
++            self._log_block_profile()
++
++            if self.cpu_offload:
++                self.model.cpu()
++                empty_cache()
++                self.vae.model.to(self.device)
++
++            synchronize()
++            start_decode_time = time.time()
++            videos = self.vae.decode(latent.to(self.param_dtype))
++            synchronize()
++            end_decode_time = time.time()
++            if self.rank == 0:
++                print(f'[generate_deferred] decode video frames: {end_decode_time - start_decode_time}s')
++
++        # Extract cond_frame but do NOT encode yet
++        if self.color_correction_strength > 0.0:
++            videos = match_and_blend_colors_torch(
++                videos, self.original_color_reference, self.color_correction_strength,
++            )
++        cond_frame = videos[:, :, -self.motion_frames_num:].to(self.device)
++
++        return videos[0].to(torch.float32), cond_frame
++
++    def finalize_motion_frames(self, cond_frame):
++        """Encode motion frames for the next chunk.  Call after generate_deferred_motion."""
++        synchronize()
++        self.latent_motion_frames = self.vae.encode(cond_frame)
++        synchronize()
++        if self.cpu_offload:
++            self.vae.model.cpu()
++            empty_cache()
++
++    @torch.no_grad()
++    def generate_stream(self, audio_embedding):
++        """Streaming variant of generate(): yields decoded frames one-by-one.
++
++        Each yield produces a single pixel-space frame tensor of shape
++        ``[1, C, 1, H, W]`` (float32, range [-1, 1]).  After the final frame
++        is yielded the ``latent_motion_frames`` attribute is updated exactly as
++        in :meth:`generate`, so callers do **not** need to handle motion-frame
++        bookkeeping.
++
++        This allows the caller to start post-processing (e.g. JPEG encoding)
++        while VAE decoding is still in progress.
++        """
++        if self.cpu_offload:
++            self.model.to(self.device)
++
++        with torch.no_grad():
++            self.arg_c.update({"audio": audio_embedding})
++            self._reset_block_profile()
++            model_for_cache = getattr(self.model, "_orig_mod", self.model)
++            if os.environ.get("FLASHTALK_DIT_BLOCK_CACHE", "0") == "1" and hasattr(model_for_cache, "reset_dit_block_cache"):
++                model_for_cache.reset_dit_block_cache()
++
++            latent = torch.randn(
++                16, (self.frame_num - 1) // 4 + 1,
++                self.lat_h, self.lat_w,
++                dtype=self.param_dtype, device=self.device,
++                generator=self.generator,
++            )
++            latent[:, :self.latent_motion_frames.shape[1]] = self.latent_motion_frames
++
++            _cache_interval = int(os.environ.get("FLASHTALK_CACHE_INTERVAL", "0"))
++            _cached_noise = None
++
++            for i in range(len(self.timesteps) - 1):
++                timestep = self.timesteps[i]
++                latent_model_input = [latent]
++
++                synchronize()
++                start_time = time.time()
++
++                if _cache_interval > 0 and i > 0 and i % _cache_interval != 0 and _cached_noise is not None:
++                    noise_pred_cond = _cached_noise
++                    if self.rank == 0:
++                        print(f'[generate_stream] step {i}: reusing cached noise (skip model)')
++                else:
++                    if hasattr(model_for_cache, "_dit_block_cache_step"):
++                        model_for_cache._dit_block_cache_step = i
++                    else:
++                        setattr(model_for_cache, "_dit_block_cache_step", i)
++                    noise_pred_cond = self.model(
++                        latent_model_input, t=timestep, **self.arg_c)[0]
++                    _cached_noise = noise_pred_cond
++
++                synchronize()
++                end_time = time.time()
++                if self.rank == 0:
++                    print(f'[generate_stream] model denoise per step: {end_time - start_time}s')
++
++                noise_pred = -noise_pred_cond
++                t_i = self.timesteps[i][:, None, None, None] / self.num_timesteps
++                t_i_1 = self.timesteps[i + 1][:, None, None, None] / self.num_timesteps
++                x_0 = latent + noise_pred * t_i
++                latent = (1 - t_i_1) * x_0 + t_i_1 * torch.randn(
++                    x_0.size(), dtype=x_0.dtype, device=self.device, generator=self.generator,
++                )
++                latent[:, :self.latent_motion_frames.shape[1]] = self.latent_motion_frames
++
++            if os.environ.get("FLASHTALK_DIT_BLOCK_CACHE", "0") == "1" and self.rank == 0:
++                cache_hits = sum(getattr(block, "_dit_cache_hits", 0) for block in model_for_cache.blocks)
++                cache_misses = sum(getattr(block, "_dit_cache_misses", 0) for block in model_for_cache.blocks)
++                print(f"[generate_stream] dit block cache: hits={cache_hits}, misses={cache_misses}")
++
++            self._log_block_profile()
++
++            if self.cpu_offload:
++                self.model.cpu()
++                empty_cache()
++                self.vae.model.to(self.device)
++
++            # --- Streaming VAE decode: yield one time-step at a time ---
++            synchronize()
++            start_decode_time = time.time()
++
++            # Collect last motion_frames_num pixel frames for VAE encode
++            # VAE temporal stride is 4, so total decoded frames = frame_num
++            # We need the last motion_frames_num decoded frames.
++            motion_pixel_frames: list[torch.Tensor] = []
++            frame_idx = 0
++            total_decoded_frames = self.frame_num  # 33
++
++            for frame_pixels in self.vae.decode_stream(latent.to(self.param_dtype)):
++                # frame_pixels: [1, C, 1, H, W], range [-1, 1]
++                frame_pixels = frame_pixels.clamp_(-1, 1)
++
++                # How many pixel frames does this yield produce?
++                # The low-level VAE decode_stream yields once per latent time
++                # step; each latent step produces ~4 pixel frames (temporal
++                # stride), EXCEPT the first step which produces 1.  In the
++                # distributed 2D stream path each yield is already gathered
++                # across ranks and has shape [1, C, n_frames, H, W].
++                n_frames_this = frame_pixels.shape[2]
++
++                # Track last motion_frames_num frames for the next-chunk cond
++                remaining_to_start = total_decoded_frames - self.motion_frames_num
++                for fi in range(n_frames_this):
++                    if frame_idx + fi >= remaining_to_start:
++                        motion_pixel_frames.append(
++                            frame_pixels[:, :, fi:fi + 1].to(self.device)
++                        )
++                frame_idx += n_frames_this
++
++                yield frame_pixels  # caller gets to work immediately
++
++            synchronize()
++            end_decode_time = time.time()
++            if self.rank == 0:
++                print(f'[generate_stream] decode video frames (stream): {end_decode_time - start_decode_time}s')
++
++        # --- Motion-frame VAE encode (must run after full decode) ---
++        if motion_pixel_frames:
++            cond_frame = torch.cat(motion_pixel_frames, dim=2).to(self.device)
++            if self.color_correction_strength > 0.0:
++                cond_frame = match_and_blend_colors_torch(
++                    cond_frame, self.original_color_reference, self.color_correction_strength,
++                )
++            synchronize()
++            start_encode_time = time.time()
++            self.latent_motion_frames = self.vae.encode(cond_frame)
++            synchronize()
++            end_encode_time = time.time()
++            if self.rank == 0:
++                print(f'[generate_stream] encode motion frames: {end_encode_time - start_encode_time}s')
++
++        if self.cpu_offload:
++            self.vae.model.cpu()
++            empty_cache()
+diff --git a/flash_talk/src/quantization.py b/flash_talk/src/quantization.py
+new file mode 100644
+index 0000000..398f8cd
+--- /dev/null
++++ b/flash_talk/src/quantization.py
+@@ -0,0 +1,145 @@
++import json
++import os
++from fnmatch import fnmatch
++from pathlib import Path
++
++import torch
++import torch.nn as nn
++from safetensors.torch import save_file
++
++
++SUPPORTED_WEIGHT_QUANT = {"int8", "fp8"}
++
++DEFAULT_WAN_QUANT_INCLUDE = [
++    "blocks.*.self_attn.*",
++    "blocks.*.cross_attn.*",
++    "blocks.*.ffn.*",
++    "blocks.*.audio_cross_attn.*",
++    "audio_proj.*",
++]
++
++DEFAULT_WAN_QUANT_EXCLUDE = [
++    "blocks.*.self_attn.norm_*",
++    "blocks.*.cross_attn.norm_*",
++    "blocks.*.audio_cross_attn.*norm*",
++    "blocks.*.norm*",
++    "audio_proj.norm*",
++    "head.*",
++    "img_emb.*",
++]
++
++
++def _require_optimum_quanto():
++    os.environ.setdefault("TORCH_DEVICE_BACKEND_AUTOLOAD", "0")
++    try:
++        from optimum.quanto import freeze, qfloat8, qint8, quantization_map, quantize, requantize
++    except ModuleNotFoundError as exc:
++        raise RuntimeError(
++            "optimum-quanto is required for FlashTalk quantization flows. "
++            "Install it with `pip install optimum-quanto` or use requirements-ascend.txt."
++        ) from exc
++
++    return {
++        "freeze": freeze,
++        "qfloat8": qfloat8,
++        "qint8": qint8,
++        "quantization_map": quantization_map,
++        "quantize": quantize,
++        "requantize": requantize,
++    }
++
++
++def parse_pattern_list(value):
++    if value is None:
++        return None
++    if isinstance(value, str):
++        parts = [part.strip() for part in value.split(",")]
++        items = [part for part in parts if part]
++        return items or None
++    items = [str(part).strip() for part in value if str(part).strip()]
++    return items or None
++
++
++def resolve_weight_quant_name(quant):
++    if quant is None:
++        return None
++    quant = str(quant).strip().lower()
++    if quant not in SUPPORTED_WEIGHT_QUANT:
++        raise ValueError(
++            f"Unsupported quantization mode: {quant!r}. Expected one of {sorted(SUPPORTED_WEIGHT_QUANT)}."
++        )
++    return quant
++
++
++def resolve_weight_qtype(quant):
++    quanto = _require_optimum_quanto()
++    quant = resolve_weight_quant_name(quant)
++    if quant == "int8":
++        return quanto["qint8"]
++    if quant == "fp8":
++        return quanto["qfloat8"]
++    raise ValueError(f"Unsupported quantization mode: {quant!r}")
++
++
++def matches_patterns(name, include=None, exclude=None):
++    include = parse_pattern_list(include)
++    exclude = parse_pattern_list(exclude)
++
++    if include is not None and not any(fnmatch(name, pattern) for pattern in include):
++        return False
++    if exclude is not None and any(fnmatch(name, pattern) for pattern in exclude):
++        return False
++    return True
++
++
++def collect_quantizable_modules(model, include=None, exclude=None):
++    quantizable_types = (nn.Linear, nn.Conv2d, nn.LayerNorm)
++    matches = []
++    for name, module in model.named_modules():
++        if not name:
++            continue
++        if not isinstance(module, quantizable_types):
++            continue
++        if matches_patterns(name, include=include, exclude=exclude):
++            matches.append((name, module.__class__.__name__))
++    return matches
++
++
++def quantize_model_weights(model, quant, include=None, exclude=None):
++    quanto = _require_optimum_quanto()
++    qtype = resolve_weight_qtype(quant)
++    include = parse_pattern_list(include)
++    exclude = parse_pattern_list(exclude)
++    targets = collect_quantizable_modules(model, include=include, exclude=exclude)
++
++    quanto["quantize"](model, weights=qtype, include=include, exclude=exclude)
++    quanto["freeze"](model)
++    return targets
++
++
++def export_quantized_weights(model, quant, output_prefix):
++    quanto = _require_optimum_quanto()
++    output_prefix = Path(output_prefix)
++    output_prefix.parent.mkdir(parents=True, exist_ok=True)
++    save_file(model.state_dict(), str(output_prefix.with_suffix(".safetensors")))
++    with output_prefix.with_name(f"{output_prefix.name}_map.json").open("w", encoding="utf-8") as f:
++        json.dump(quanto["quantization_map"](model), f, indent=2, sort_keys=True)
++
++
++def export_quantized_model_files(model, quant, output_dir, stem):
++    quant = resolve_weight_quant_name(quant)
++    output_dir = Path(output_dir)
++    output_dir.mkdir(parents=True, exist_ok=True)
++
++    weights_path = output_dir / f"{stem}_{quant}.safetensors"
++    map_path = output_dir / f"{stem}_map_{quant}.json"
++    quanto = _require_optimum_quanto()
++    save_file(model.state_dict(), str(weights_path))
++    with map_path.open("w", encoding="utf-8") as f:
++        json.dump(quanto["quantization_map"](model), f, indent=2, sort_keys=True)
++    return weights_path, map_path
++
++
++def requantize_model(model, state_dict, quantization_map, device="cpu"):
++    quanto = _require_optimum_quanto()
++    quanto["requantize"](model, state_dict, quantization_map, device=device)
+diff --git a/flash_talk/wan/modules/attention.py b/flash_talk/wan/modules/attention.py
+index 4ec40df..76da2b0 100644
+--- a/flash_talk/wan/modules/attention.py
++++ b/flash_talk/wan/modules/attention.py
+@@ -1,7 +1,14 @@
+ # Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
+ import torch
++import torch.nn.functional as F
+ import warnings
+ 
++try:
++    import torch_npu  # noqa: F401
++    _IS_NPU = True
++except ImportError:
++    _IS_NPU = False
++
+ try:
+     import flash_attn_interface
+     FLASH_ATTN_3_AVAILABLE = True
+@@ -14,11 +21,92 @@ try:
+ except ModuleNotFoundError:
+     FLASH_ATTN_2_AVAILABLE = False
+ 
++# NPU fusion attention (direct torch_npu, no mindiesd dependency)
++_NPU_FUSION_ATTN_AVAILABLE = False
++if _IS_NPU:
++    _NPU_FUSION_ATTN_AVAILABLE = hasattr(torch_npu, 'npu_fusion_attention')
++
+ __all__ = [
+     'flash_attention',
+     'attention',
+ ]
+ 
++def _scaled_dot_product_attention(
++    q,
++    k,
++    v,
++    q_lens=None,
++    k_lens=None,
++    dropout_p=0.,
++    softmax_scale=None,
++    q_scale=None,
++    causal=False,
++    window_size=(-1, -1),
++    dtype=torch.bfloat16,
++):
++    if window_size != (-1, -1):
++        warnings.warn(
++            'Sliding window attention is not supported by the PyTorch fallback; using full attention instead.'
++        )
++
++    half_dtypes = (torch.float16, torch.bfloat16)
++    out_dtype = q.dtype
++
++    def half(x):
++        return x if x.dtype in half_dtypes else x.to(dtype)
++
++    def run_attention(q_i, k_i, v_i):
++        q_i = half(q_i).transpose(1, 2)
++        k_i = half(k_i).transpose(1, 2)
++        v_i = half(v_i).transpose(1, 2)
++
++        if q_scale is not None:
++            q_i = q_i * q_scale
++
++        if q_i.size(1) != k_i.size(1):
++            if q_i.size(1) % k_i.size(1) != 0:
++                raise ValueError(
++                    f'Query heads ({q_i.size(1)}) must be divisible by key heads ({k_i.size(1)}).'
++                )
++            repeat = q_i.size(1) // k_i.size(1)
++            k_i = k_i.repeat_interleave(repeat, dim=1)
++            v_i = v_i.repeat_interleave(repeat, dim=1)
++
++        kwargs = dict(dropout_p=dropout_p, is_causal=causal)
++        if softmax_scale is not None:
++            kwargs['scale'] = softmax_scale
++
++        try:
++            out_i = F.scaled_dot_product_attention(q_i, k_i, v_i, **kwargs)
++        except TypeError:
++            kwargs.pop('scale', None)
++            out_i = F.scaled_dot_product_attention(q_i, k_i, v_i, **kwargs)
++
++        return out_i.transpose(1, 2).contiguous()
++
++    if q_lens is None and k_lens is None:
++        return run_attention(q, k, v).type(out_dtype)
++
++    b, lq, nq, _ = q.shape
++    c2 = v.shape[-1]
++    out = torch.zeros((b, lq, nq, c2), device=q.device, dtype=out_dtype)
++    if q_lens is None:
++        q_lens = [lq] * b
++    if k_lens is None:
++        k_lens = [k.shape[1]] * b
++
++    for idx, (q_len, k_len) in enumerate(zip(q_lens, k_lens)):
++        q_len = int(q_len)
++        k_len = int(k_len)
++        out[idx:idx + 1, :q_len] = run_attention(
++            q[idx:idx + 1, :q_len],
++            k[idx:idx + 1, :k_len],
++            v[idx:idx + 1, :k_len],
++        ).type(out_dtype)
++
++    return out
++
++
+ def flash_attention(
+     q,
+     k,
+@@ -49,7 +137,65 @@ def flash_attention(
+     """
+     half_dtypes = (torch.float16, torch.bfloat16)
+     assert dtype in half_dtypes
+-    assert q.device.type == 'cuda' and q.size(-1) <= 256
++
++    # NPU path: use torch_npu.npu_fusion_attention
++    if _NPU_FUSION_ATTN_AVAILABLE and q.device.type == 'npu':
++        def half(x):
++            return x if x.dtype in half_dtypes else x.to(dtype)
++        out_dtype = q.dtype
++        # npu_fusion_attention expects BNSD layout
++        q_h = half(q).transpose(1, 2).contiguous()  # [B, N, S, D]
++        k_h = half(k).transpose(1, 2).contiguous()
++        v_h = half(v).transpose(1, 2).contiguous()
++        if q_scale is not None:
++            q_h = q_h * q_scale
++        scale = softmax_scale if softmax_scale is not None else q_h.shape[-1] ** -0.5
++        if q_lens is None and k_lens is None:
++            out = torch_npu.npu_fusion_attention(
++                q_h, k_h, v_h,
++                head_num=q_h.shape[1],
++                input_layout="BNSD",
++                scale=scale,
++                pre_tockens=65535,
++                next_tockens=65535,
++            )[0]
++            return out.transpose(1, 2).contiguous().type(out_dtype)
++        else:
++            b, lq, nq, _ = q.shape
++            c2 = v.shape[-1]
++            out = torch.zeros((b, lq, nq, c2), device=q.device, dtype=out_dtype)
++            if q_lens is None:
++                q_lens = [lq] * b
++            if k_lens is None:
++                k_lens = [k.shape[1]] * b
++            for idx, (q_len, k_len) in enumerate(zip(q_lens, k_lens)):
++                q_len, k_len = int(q_len), int(k_len)
++                out_i = torch_npu.npu_fusion_attention(
++                    q_h[idx:idx+1, :, :q_len], k_h[idx:idx+1, :, :k_len], v_h[idx:idx+1, :, :k_len],
++                    head_num=q_h.shape[1],
++                    input_layout="BNSD",
++                    scale=scale,
++                    pre_tokens=65535,
++                    next_tokens=65535,
++                )[0]
++                out[idx:idx+1, :q_len] = out_i.transpose(1, 2).contiguous().type(out_dtype)
++            return out
++
++    if q.device.type != 'cuda' or not (FLASH_ATTN_2_AVAILABLE or FLASH_ATTN_3_AVAILABLE):
++        return _scaled_dot_product_attention(
++            q=q,
++            k=k,
++            v=v,
++            q_lens=q_lens,
++            k_lens=k_lens,
++            dropout_p=dropout_p,
++            softmax_scale=softmax_scale,
++            q_scale=q_scale,
++            causal=causal,
++            window_size=window_size,
++            dtype=dtype,
++        )
++    assert q.size(-1) <= 256
+ 
+     # params
+     b, lq, lk, out_dtype = q.size(0), q.size(1), k.size(1), q.dtype
+@@ -166,18 +312,16 @@ def attention(
+             version=fa_version,
+         )
+     else:
+-        if q_lens is not None or k_lens is not None:
+-            warnings.warn(
+-                'Padding mask is disabled when using scaled_dot_product_attention. It can have a significant impact on performance.'
+-            )
+-        attn_mask = None
+-
+-        q = q.transpose(1, 2).to(dtype)
+-        k = k.transpose(1, 2).to(dtype)
+-        v = v.transpose(1, 2).to(dtype)
+-
+-        out = torch.nn.functional.scaled_dot_product_attention(
+-            q, k, v, attn_mask=attn_mask, is_causal=causal, dropout_p=dropout_p)
+-
+-        out = out.transpose(1, 2).contiguous()
+-        return out
++        return _scaled_dot_product_attention(
++            q=q,
++            k=k,
++            v=v,
++            q_lens=q_lens,
++            k_lens=k_lens,
++            dropout_p=dropout_p,
++            softmax_scale=softmax_scale,
++            q_scale=q_scale,
++            causal=causal,
++            window_size=window_size,
++            dtype=dtype,
++        )
+diff --git a/flash_talk/wan/modules/clip.py b/flash_talk/wan/modules/clip.py
+index 42dda04..5169da0 100644
+--- a/flash_talk/wan/modules/clip.py
++++ b/flash_talk/wan/modules/clip.py
+@@ -8,6 +8,7 @@ import torch.nn as nn
+ import torch.nn.functional as F
+ import torchvision.transforms as T
+ 
++from flash_talk.src.accelerator import autocast
+ from .attention import flash_attention
+ from .tokenizers import HuggingfaceTokenizer
+ from .xlm_roberta import XLMRoberta
+@@ -537,6 +538,6 @@ class CLIPModel:
+         videos = self.transforms.transforms[-1](videos.mul_(0.5).add_(0.5))
+ 
+         # forward
+-        with torch.cuda.amp.autocast(dtype=self.dtype):
++        with autocast(dtype=self.dtype):
+             out = self.model.visual(videos, use_31_block=True)
+             return out
+diff --git a/flash_talk/wan/modules/model.py b/flash_talk/wan/modules/model.py
+index 14b695e..dc5631e 100644
+--- a/flash_talk/wan/modules/model.py
++++ b/flash_talk/wan/modules/model.py
+@@ -2,7 +2,12 @@
+ import math
+ 
+ import torch
+-import torch.cuda.amp as amp
++try:
++    import torch_npu  # noqa: F401
++    _amp_device = "npu"
++except ImportError:
++    _amp_device = "cuda"
++import torch.amp as amp
+ import torch.nn as nn
+ from diffusers.configuration_utils import ConfigMixin, register_to_config
+ from diffusers.models.modeling_utils import ModelMixin
+@@ -19,7 +24,7 @@ def sinusoidal_embedding_1d(dim, position):
+     # preprocess
+     assert dim % 2 == 0
+     half = dim // 2
+-    position = position.type(torch.float64)
++    position = position.float()
+ 
+     # calculation
+     sinusoid = torch.outer(
+@@ -28,46 +33,71 @@ def sinusoidal_embedding_1d(dim, position):
+     return x
+ 
+ 
+-@amp.autocast(enabled=False)
++@amp.autocast(_amp_device, enabled=False)
+ def rope_params(max_seq_len, dim, theta=10000):
+     assert dim % 2 == 0
+     freqs = torch.outer(
+         torch.arange(max_seq_len),
+         1.0 / torch.pow(theta,
+-                        torch.arange(0, dim, 2).to(torch.float64).div(dim)))
+-    freqs = torch.polar(torch.ones_like(freqs), freqs)
+-    return freqs
++                        torch.arange(0, dim, 2).float().div(dim)))
++    # Return cos/sin pair instead of complex tensor (NPU doesn't support complex128)
++    return torch.cos(freqs), torch.sin(freqs)
+ 
+ 
+-@amp.autocast(enabled=False)
++def rope_params_cat(params_list, dim=1):
++    """Concatenate multiple (cos, sin) pairs along a dimension."""
++    cos_list = [p[0] for p in params_list]
++    sin_list = [p[1] for p in params_list]
++    return torch.cat(cos_list, dim=dim), torch.cat(sin_list, dim=dim)
++
++
++@amp.autocast(_amp_device, enabled=False)
+ def rope_apply(x, grid_sizes, freqs):
+     n, c = x.size(2), x.size(3) // 2
+ 
++    freqs_cos, freqs_sin = freqs
++
+     # split freqs
+-    freqs = freqs.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
++    freqs_cos = freqs_cos.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
++    freqs_sin = freqs_sin.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
+ 
+     # loop over samples
+     output = []
+     for i, (f, h, w) in enumerate(grid_sizes.tolist()):
+         seq_len = f * h * w
+ 
+-        # precompute multipliers
+-        x_i = torch.view_as_complex(x[i, :seq_len].to(torch.float64).reshape(
+-            seq_len, n, -1, 2))
+-        freqs_i = torch.cat([
+-            freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
+-            freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
+-            freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
+-        ],
+-                            dim=-1).reshape(seq_len, 1, -1)
+-
+-        # apply rotary embedding
+-        x_i = torch.view_as_real(x_i * freqs_i).flatten(2)
++        # reshape x to pairs for rotary embedding
++        out_dtype = x.dtype
++        x_pair = x[i, :seq_len].float().reshape(seq_len, n, -1, 2)
++        x_real = x_pair[..., 0]  # [seq_len, n, c]
++        x_imag = x_pair[..., 1]  # [seq_len, n, c]
++
++        # build freq grids (real-valued)
++        cos_i = torch.cat([
++            freqs_cos[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
++            freqs_cos[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
++            freqs_cos[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
++        ], dim=-1).reshape(seq_len, 1, -1)
++
++        sin_i = torch.cat([
++            freqs_sin[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
++            freqs_sin[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
++            freqs_sin[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
++        ], dim=-1).reshape(seq_len, 1, -1)
++
++        # apply rotary: (x_real + i*x_imag) * (cos + i*sin)
++        # real part: x_real*cos - x_imag*sin
++        # imag part: x_real*sin + x_imag*cos
++        out_real = x_real * cos_i - x_imag * sin_i
++        out_imag = x_real * sin_i + x_imag * cos_i
++
++        # interleave real and imag back: [seq_len, n, c, 2] -> [seq_len, n, c*2]
++        x_i = torch.stack([out_real, out_imag], dim=-1).flatten(2).to(out_dtype)
+         x_i = torch.cat([x_i, x[i, seq_len:]])
+ 
+         # append to collection
+         output.append(x_i)
+-    return torch.stack(output).float()
++    return torch.stack(output)
+ 
+ 
+ class WanRMSNorm(nn.Module):
+@@ -83,6 +113,8 @@ class WanRMSNorm(nn.Module):
+         Args:
+             x(Tensor): Shape [B, L, C]
+         """
++        if _amp_device == "npu":
++            return torch_npu.npu_rms_norm(x, self.weight, epsilon=self.eps)[0]
+         return self._norm(x.float()).type_as(x) * self.weight
+ 
+     def _norm(self, x):
+@@ -294,7 +326,7 @@ class WanAttentionBlock(nn.Module):
+             freqs(Tensor): Rope freqs, shape [1024, C / num_heads / 2]
+         """
+         assert e.dtype == torch.float32
+-        with amp.autocast(dtype=torch.float32):
++        with amp.autocast(_amp_device, dtype=torch.float32):
+             e = (self.modulation.to(e.device) + e).chunk(6, dim=1)
+         assert e[0].dtype == torch.float32
+ 
+@@ -302,14 +334,14 @@ class WanAttentionBlock(nn.Module):
+         y = self.self_attn(
+             self.norm1(x).float() * (1 + e[1]) + e[0], seq_lens, grid_sizes,
+             freqs)
+-        with amp.autocast(dtype=torch.float32):
++        with amp.autocast(_amp_device, dtype=torch.float32):
+             x = x + y * e[2]
+ 
+         # cross-attention & ffn function
+         def cross_attn_ffn(x, context, context_lens, e):
+             x = x + self.cross_attn(self.norm3(x), context, context_lens)
+             y = self.ffn(self.norm2(x).float() * (1 + e[4]) + e[3])
+-            with amp.autocast(dtype=torch.float32):
++            with amp.autocast(_amp_device, dtype=torch.float32):
+                 x = x + y * e[5]
+             return x
+ 
+@@ -341,7 +373,7 @@ class Head(nn.Module):
+             e(Tensor): Shape [B, C]
+         """
+         assert e.dtype == torch.float32
+-        with amp.autocast(dtype=torch.float32):
++        with amp.autocast(_amp_device, dtype=torch.float32):
+             e = (self.modulation.to(e.device) + e.unsqueeze(1)).chunk(2, dim=1)
+             x = (self.head(self.norm(x) * (1 + e[1]) + e[0]))
+         return x
+@@ -477,12 +509,11 @@ class WanModel(ModelMixin, ConfigMixin):
+         # buffers (don't use register_buffer otherwise dtype will be changed in to())
+         assert (dim % num_heads) == 0 and (dim // num_heads) % 2 == 0
+         d = dim // num_heads
+-        self.freqs = torch.cat([
++        self.freqs = rope_params_cat([
+             rope_params(1024, d - 4 * (d // 6)),
+             rope_params(1024, 2 * (d // 6)),
+             rope_params(1024, 2 * (d // 6))
+-        ],
+-                               dim=1)
++        ], dim=1)
+ 
+         if model_type == 'i2v' or model_type == 'flf2v':
+             self.img_emb = MLPProj(1280, dim, flf_pos_emb=model_type == 'flf2v')
+@@ -524,8 +555,8 @@ class WanModel(ModelMixin, ConfigMixin):
+             assert clip_fea is not None and y is not None
+         # params
+         device = self.patch_embedding.weight.device
+-        if self.freqs.device != device:
+-            self.freqs = self.freqs.to(device)
++        if self.freqs[0].device != device:
++            self.freqs = (self.freqs[0].to(device), self.freqs[1].to(device))
+ 
+         if y is not None:
+             x = [torch.cat([u, v], dim=0) for u, v in zip(x, y)]
+@@ -543,10 +574,10 @@ class WanModel(ModelMixin, ConfigMixin):
+         ])
+ 
+         # time embeddings
+-        with amp.autocast(dtype=torch.float32):
++        with amp.autocast(_amp_device, dtype=torch.float32):
+             e = self.time_embedding(
+-                sinusoidal_embedding_1d(self.freq_dim, t).float())
+-            e0 = self.time_projection(e).unflatten(1, (6, self.dim))
++                sinusoidal_embedding_1d(self.freq_dim, t).float()).float()
++            e0 = self.time_projection(e).float().unflatten(1, (6, self.dim))
+             assert e.dtype == torch.float32 and e0.dtype == torch.float32
+ 
+         # context
+diff --git a/flash_talk/wan/modules/t5.py b/flash_talk/wan/modules/t5.py
+index 5adb5e5..3849089 100644
+--- a/flash_talk/wan/modules/t5.py
++++ b/flash_talk/wan/modules/t5.py
+@@ -10,8 +10,9 @@ import torch.nn as nn
+ import torch.nn.functional as F
+ 
+ from safetensors.torch import load_file
+-from optimum.quanto import quantize, freeze, qint8,requantize
+ 
++from flash_talk.src.accelerator import current_device
++from flash_talk.src.quantization import requantize_model
+ from .tokenizers import HuggingfaceTokenizer
+ 
+ __all__ = [
+@@ -480,7 +481,7 @@ class T5EncoderModel:
+         self,
+         text_len,
+         dtype=torch.bfloat16,
+-        device=torch.cuda.current_device(),
++        device=None,
+         checkpoint_path=None,
+         tokenizer_path=None,
+         shard_fn=None,
+@@ -490,24 +491,31 @@ class T5EncoderModel:
+         assert quant is None or quant in ("int8", "fp8")
+         self.text_len = text_len
+         self.dtype = dtype
+-        self.device = device
++        self.device = device if device is not None else current_device()
+         self.checkpoint_path = checkpoint_path
+         self.tokenizer_path = tokenizer_path
++        self.quant = quant.lower() if quant is not None else None
++        self.quant_dir = os.fspath(quant_dir) if quant_dir is not None else None
++
++        if self.quant is not None and self.quant_dir is None:
++            raise ValueError("quant_dir is required when loading quantized T5 weights")
+ 
+         # init model
+         logging.info(f'loading {checkpoint_path}')
+-        if quant is not None:
++        if self.quant is not None:
+             with torch.device('meta'):
+                 model = umt5_xxl(
+                     encoder_only=True,
+                     return_tokenizer=False,
+                     dtype=dtype,
+                     device=torch.device('meta'))
+-            logging.info(f'Loading quantized T5 from {os.path.join(quant_dir, f"t5_{quant}.safetensors")}')
+-            model_state_dict = load_file(os.path.join(quant_dir, f"t5_{quant}.safetensors"))
+-            with open(os.path.join(quant_dir, f"t5_map_{quant}.json"), "r") as f:
++            quant_weights = os.path.join(self.quant_dir, f"t5_{self.quant}.safetensors")
++            quant_map = os.path.join(self.quant_dir, f"t5_map_{self.quant}.json")
++            logging.info(f'Loading quantized T5 from {quant_weights}')
++            model_state_dict = load_file(quant_weights)
++            with open(quant_map, "r") as f:
+                 quantization_map = json.load(f)
+-            requantize(model, model_state_dict, quantization_map, device='cpu')
++            requantize_model(model, model_state_dict, quantization_map, device='cpu')
+         else:
+             model = umt5_xxl(
+                 encoder_only=True,
+diff --git a/flash_talk/wan/modules/vace_model.py b/flash_talk/wan/modules/vace_model.py
+index a12d1dd..7c82a33 100644
+--- a/flash_talk/wan/modules/vace_model.py
++++ b/flash_talk/wan/modules/vace_model.py
+@@ -1,6 +1,11 @@
+ # Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
+ import torch
+-import torch.cuda.amp as amp
++try:
++    import torch_npu  # noqa: F401
++    _amp_device = "npu"
++except ImportError:
++    _amp_device = "cuda"
++import torch.amp as amp
+ import torch.nn as nn
+ from diffusers.configuration_utils import register_to_config
+ 
+@@ -188,8 +193,8 @@ class VaceWanModel(WanModel):
+         #     assert clip_fea is not None and y is not None
+         # params
+         device = self.patch_embedding.weight.device
+-        if self.freqs.device != device:
+-            self.freqs = self.freqs.to(device)
++        if self.freqs[0].device != device:
++            self.freqs = (self.freqs[0].to(device), self.freqs[1].to(device))
+ 
+         # if y is not None:
+         #     x = [torch.cat([u, v], dim=0) for u, v in zip(x, y)]
+@@ -207,10 +212,10 @@ class VaceWanModel(WanModel):
+         ])
+ 
+         # time embeddings
+-        with amp.autocast(dtype=torch.float32):
++        with amp.autocast(_amp_device, dtype=torch.float32):
+             e = self.time_embedding(
+-                sinusoidal_embedding_1d(self.freq_dim, t).float())
+-            e0 = self.time_projection(e).unflatten(1, (6, self.dim))
++                sinusoidal_embedding_1d(self.freq_dim, t).float()).float()
++            e0 = self.time_projection(e).float().unflatten(1, (6, self.dim))
+             assert e.dtype == torch.float32 and e0.dtype == torch.float32
+ 
+         # context

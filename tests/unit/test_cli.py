@@ -226,7 +226,7 @@ def test_request_from_args_builds_audio2video_request() -> None:
             "--prompt",
             "talking head",
             "--repo-path",
-            "/srv/SoulX-FlashTalk",
+            "/path/to/SoulX-FlashTalk",
             "--resident-target",
             "127.0.0.1:50071",
             "--resident-autostart",
@@ -243,7 +243,7 @@ def test_request_from_args_builds_audio2video_request() -> None:
     assert request.task == "audio2video"
     assert request.inputs["image"] == "speaker.png"
     assert request.inputs["audio"] == "voice.wav"
-    assert request.config["repo_path"] == "/srv/SoulX-FlashTalk"
+    assert request.config["repo_path"] == "/path/to/SoulX-FlashTalk"
     assert request.config["resident_target"] == "127.0.0.1:50071"
     assert request.config["resident_autostart"] is True
     assert request.config["launcher"] == "python"
@@ -265,7 +265,7 @@ def test_request_from_args_builds_liveact_audio2video_request() -> None:
             "--audio",
             "voice.wav",
             "--repo-path",
-            "/srv/SoulX-LiveAct",
+            "/path/to/SoulX-LiveAct",
             "--size",
             "416*720",
             "--fps",
@@ -295,7 +295,7 @@ def test_request_from_args_builds_liveact_audio2video_request() -> None:
     assert request.model == "soulx-liveact-14b"
     assert request.inputs["image"] == "speaker.png"
     assert request.inputs["audio"] == "voice.wav"
-    assert request.config["repo_path"] == "/srv/SoulX-LiveAct"
+    assert request.config["repo_path"] == "/path/to/SoulX-LiveAct"
     assert request.config["size"] == "416*720"
     assert request.config["fps"] == 20
     assert request.config["sample_steps"] == 1
@@ -452,7 +452,7 @@ def test_build_parser_accepts_resident_flashtalk_worker_command() -> None:
             "--worker-id",
             "ft-a",
             "--repo-path",
-            "/srv/SoulX-FlashTalk",
+            "/path/to/SoulX-FlashTalk",
             "--launcher",
             "python",
         ]
@@ -461,7 +461,7 @@ def test_build_parser_accepts_resident_flashtalk_worker_command() -> None:
     assert args.command == "resident-flashtalk-worker"
     assert args.port == 50071
     assert args.worker_id == "ft-a"
-    assert args.repo_path == "/srv/SoulX-FlashTalk"
+    assert args.repo_path == "/path/to/SoulX-FlashTalk"
     assert args.launcher == "python"
 
 
@@ -559,7 +559,7 @@ def test_flashtalk_worker_config_from_args_collects_runtime_fields() -> None:
         [
             "resident-flashtalk-worker",
             "--repo-path",
-            "/srv/SoulX-FlashTalk",
+            "/path/to/SoulX-FlashTalk",
             "--ckpt-dir",
             "models/SoulX-FlashTalk-14B",
             "--wav2vec-dir",
@@ -585,7 +585,7 @@ def test_flashtalk_worker_config_from_args_collects_runtime_fields() -> None:
     config = flashtalk_worker_config_from_args(args)
 
     assert config == {
-        "repo_path": "/srv/SoulX-FlashTalk",
+        "repo_path": "/path/to/SoulX-FlashTalk",
         "ckpt_dir": "models/SoulX-FlashTalk-14B",
         "wav2vec_dir": "models/chinese-wav2vec2-base",
         "launcher": "accelerate",

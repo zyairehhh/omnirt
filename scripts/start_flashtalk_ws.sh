@@ -8,11 +8,13 @@ usage() {
 Start the OmniRT FlashTalk-compatible WebSocket service.
 
 Required environment:
-  OMNIRT_FLASHTALK_REPO_PATH      External SoulX-FlashTalk checkout path.
+  none if `omnirt runtime install flashtalk --device ascend` has been run.
 
 Common environment:
+  OMNIRT_HOME                      Runtime home. Default: <omnirt checkout>/.omnirt
   OMNIRT_FLASHTALK_HOST           Bind host. Default: 0.0.0.0
   OMNIRT_FLASHTALK_PORT           Bind port. Default: 8765
+  OMNIRT_FLASHTALK_SERVER_PATH    WS server entrypoint. Default: model_backends/flashtalk/flashtalk_ws_server.py
   OMNIRT_FLASHTALK_CKPT_DIR       Checkpoint dir. Default: models/SoulX-FlashTalk-14B
   OMNIRT_FLASHTALK_WAV2VEC_DIR    wav2vec dir. Default: models/chinese-wav2vec2-base
   OMNIRT_FLASHTALK_NPROC_PER_NODE torchrun process count. Default: 8
@@ -20,8 +22,8 @@ Common environment:
   OMNIRT_FLASHTALK_CMD_DIR        Command-file dir. Default: ./outputs/flashtalk-cmd
   OMNIRT_FLASHTALK_PYTHON         Python executable. Default: python
   OMNIRT_FLASHTALK_TORCHRUN       torchrun executable. Default: torchrun
-  OMNIRT_FLASHTALK_ENV_SCRIPT     Optional shell script to source before launch.
-  OMNIRT_FLASHTALK_VENV_ACTIVATE  Optional virtualenv activate script to source before launch.
+  OMNIRT_FLASHTALK_ENV_SCRIPT     Ascend/CANN environment script.
+  OMNIRT_FLASHTALK_VENV_ACTIVATE  Virtualenv activate script.
 
 Optional quantization environment:
   OMNIRT_FLASHTALK_T5_QUANT
@@ -30,14 +32,9 @@ Optional quantization environment:
   OMNIRT_FLASHTALK_WAN_QUANT_INCLUDE
   OMNIRT_FLASHTALK_WAN_QUANT_EXCLUDE
 
-910B example using an external FlashTalk checkout and virtual environment:
-  cd /path/to/omnirt
-  OMNIRT_FLASHTALK_REPO_PATH=/path/to/SoulX-FlashTalk \\
-  OMNIRT_FLASHTALK_ENV_SCRIPT=/path/to/Ascend/ascend-toolkit/set_env.sh \\
-  OMNIRT_FLASHTALK_VENV_ACTIVATE=/path/to/flashtalk-venv/bin/activate \\
-  OMNIRT_FLASHTALK_PYTHON=/path/to/flashtalk-venv/bin/python \\
-  OMNIRT_FLASHTALK_TORCHRUN=/path/to/flashtalk-venv/bin/torchrun \\
-  OMNIRT_FLASHTALK_NPROC_PER_NODE=8 \\
+910B example using an OmniRT-managed runtime:
+  cd <omnirt-repo-root>
+  python -m omnirt.cli.main runtime install flashtalk --device ascend
   bash scripts/start_flashtalk_ws.sh
 USAGE
 }
@@ -98,11 +95,29 @@ resolve_repo_relative() {
   fi
 }
 
+load_runtime_env() {
+  if [[ -n "${OMNIRT_FLASHTALK_REPO_PATH:-}" && -n "${OMNIRT_FLASHTALK_PYTHON:-}" && -n "${OMNIRT_FLASHTALK_TORCHRUN:-}" ]]; then
+    return
+  fi
+  local omnirt_python="${OMNIRT_CLI_PYTHON:-python}"
+  local env_output
+  if env_output="$("$omnirt_python" -m omnirt.cli.main runtime env flashtalk --device "${OMNIRT_FLASHTALK_DEVICE:-ascend}" --shell 2>/dev/null)"; then
+    eval "$env_output"
+  else
+    echo "error: FlashTalk runtime is not configured." >&2
+    echo "hint: run 'python -m omnirt.cli.main runtime install flashtalk --device ascend' or set OMNIRT_FLASHTALK_* manually." >&2
+    exit 2
+  fi
+}
+
+export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+load_runtime_env
 require_env OMNIRT_FLASHTALK_REPO_PATH
 
 HOST="${OMNIRT_FLASHTALK_HOST:-0.0.0.0}"
 PORT="${OMNIRT_FLASHTALK_PORT:-8765}"
 REPO_PATH="${OMNIRT_FLASHTALK_REPO_PATH}"
+SERVER_PATH="${OMNIRT_FLASHTALK_SERVER_PATH:-$ROOT/model_backends/flashtalk/flashtalk_ws_server.py}"
 CKPT_DIR="${OMNIRT_FLASHTALK_CKPT_DIR:-models/SoulX-FlashTalk-14B}"
 WAV2VEC_DIR="${OMNIRT_FLASHTALK_WAV2VEC_DIR:-models/chinese-wav2vec2-base}"
 NPROC_PER_NODE="${OMNIRT_FLASHTALK_NPROC_PER_NODE:-8}"
@@ -116,7 +131,8 @@ if [[ ! "$NPROC_PER_NODE" =~ ^[1-9][0-9]*$ ]]; then
   exit 2
 fi
 require_dir "$REPO_PATH" "FlashTalk repository"
-require_file "$REPO_PATH/flashtalk_server.py" "FlashTalk server"
+require_dir "$REPO_PATH/flash_talk" "FlashTalk runtime package"
+require_file "$SERVER_PATH" "FlashTalk WebSocket server"
 require_dir "$(resolve_repo_relative "$CKPT_DIR")" "FlashTalk checkpoint directory"
 require_dir "$(resolve_repo_relative "$WAV2VEC_DIR")" "FlashTalk wav2vec directory"
 if [[ -n "${OMNIRT_FLASHTALK_ENV_SCRIPT:-}" ]]; then
@@ -150,6 +166,7 @@ common_args=(
   --host "$HOST"
   --port "$PORT"
   --repo-path "$REPO_PATH"
+  --server-path "$SERVER_PATH"
   --ckpt-dir "$CKPT_DIR"
   --wav2vec-dir "$WAV2VEC_DIR"
 )
@@ -175,10 +192,11 @@ fi
 
 case "$ENTRYPOINT" in
   lightweight)
+    export PYTHONPATH="$REPO_PATH:$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
     target=("$ROOT/src/omnirt/cli/flashtalk_ws.py" "${common_args[@]}")
     ;;
   cli)
-    export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+    export PYTHONPATH="$REPO_PATH:$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
     target=(-m omnirt.cli.main serve --protocol flashtalk-ws "${common_args[@]}")
     ;;
   *)

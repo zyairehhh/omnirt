@@ -106,14 +106,16 @@ omnirt serve \
   --protocol flashtalk-ws \
   --host 0.0.0.0 \
   --port 8765 \
-  --repo-path /path/to/SoulX-FlashTalk \
+  --repo-path .omnirt/model-repos/SoulX-FlashTalk \
+  --server-path model_backends/flashtalk/flashtalk_ws_server.py \
   --ckpt-dir models/SoulX-FlashTalk-14B \
   --wav2vec-dir models/chinese-wav2vec2-base
 ```
 
-If the model environment does not have full OmniRT dependencies installed, prefer the helper script lightweight entrypoint:
+If the model environment does not have full OmniRT dependencies installed, install the FlashTalk runtime first and prefer the helper script lightweight entrypoint:
 
 ```bash
+python -m omnirt.cli.main runtime install flashtalk --device ascend
 bash scripts/start_flashtalk_ws.sh
 ```
 

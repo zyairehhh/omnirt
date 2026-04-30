@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import importlib
+import importlib.util
 import os
 from pathlib import Path
 import sys
@@ -33,6 +33,24 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
+def _runtime_state_settings() -> dict[str, str]:
+    try:
+        from omnirt.runtime import load_state
+    except Exception:
+        return {}
+    device = os.environ.get("OMNIRT_FLASHTALK_DEVICE", "ascend")
+    try:
+        state = load_state("flashtalk", device)
+    except Exception:
+        return {}
+    return {
+        "repo_path": state.repo_path,
+        "server_path": state.server_path,
+        "ckpt_dir": state.ckpt_dir,
+        "wav2vec_dir": state.wav2vec_dir,
+    }
+
+
 def _setting(name: str, args: argparse.Namespace) -> str | None:
     value = getattr(args, name, None)
     if isinstance(value, str) and value.strip():
@@ -47,6 +65,9 @@ def _setting(name: str, args: argparse.Namespace) -> str | None:
     yaml_value = merged.get(name)
     if isinstance(yaml_value, str) and yaml_value.strip():
         return yaml_value.strip()
+    state_value = _runtime_state_settings().get(name)
+    if state_value and state_value.strip():
+        return state_value.strip()
     return None
 
 
@@ -64,6 +85,17 @@ def _resolve_repo_path(args: argparse.Namespace) -> Path:
     return Path(_required_setting("repo_path", args)).expanduser().resolve()
 
 
+def _default_server_path() -> Path:
+    return _project_root() / "model_backends" / "flashtalk" / "flashtalk_ws_server.py"
+
+
+def _resolve_server_path(args: argparse.Namespace) -> Path:
+    value = _setting("server_path", args)
+    if value is None:
+        return _default_server_path().resolve()
+    return Path(value).expanduser().resolve()
+
+
 def _resolve_repo_relative(repo_path: Path, value: str) -> Path:
     path = Path(value).expanduser()
     if path.is_absolute():
@@ -73,7 +105,7 @@ def _resolve_repo_relative(repo_path: Path, value: str) -> Path:
 
 def build_flashtalk_ws_argv(args: argparse.Namespace) -> list[str]:
     argv = [
-        "flashtalk_server.py",
+        str(args.server_path),
         "--host",
         str(args.host),
         "--port",
@@ -103,6 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--repo-path")
+    parser.add_argument("--server-path")
     parser.add_argument("--ckpt-dir")
     parser.add_argument("--wav2vec-dir")
     parser.add_argument("--cpu-offload", action="store_true")
@@ -159,8 +192,11 @@ def run(args: argparse.Namespace) -> int:
         return run_proxy_server(args)
 
     repo_path = _resolve_repo_path(args)
-    if not (repo_path / "flashtalk_server.py").exists():
-        raise SystemExit(f"error: FlashTalk server not found under {repo_path}")
+    if not (repo_path / "flash_talk").is_dir():
+        raise SystemExit(f"error: FlashTalk runtime package not found under {repo_path}")
+    args.server_path = str(_resolve_server_path(args))
+    if not Path(args.server_path).is_file():
+        raise SystemExit(f"error: FlashTalk WebSocket server not found: {args.server_path}")
 
     args.ckpt_dir = str(_resolve_repo_relative(repo_path, _required_setting("ckpt_dir", args)))
     args.wav2vec_dir = str(_resolve_repo_relative(repo_path, _required_setting("wav2vec_dir", args)))
@@ -185,7 +221,12 @@ def run(args: argparse.Namespace) -> int:
     sys.argv = build_flashtalk_ws_argv(args)
     try:
         os.chdir(repo_path)
-        server_module = importlib.import_module("flashtalk_server")
+        spec = importlib.util.spec_from_file_location("omnirt_flashtalk_ws_server", args.server_path)
+        if spec is None or spec.loader is None:
+            raise SystemExit(f"error: cannot load FlashTalk WebSocket server: {args.server_path}")
+        server_module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = server_module
+        spec.loader.exec_module(server_module)
         return int(server_module.main() or 0)
     finally:
         os.chdir(previous_cwd)

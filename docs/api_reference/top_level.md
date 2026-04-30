@@ -2,14 +2,14 @@
 
 顶层函数，推荐作为 Python 侧的入口。
 
-::: omnirt.generate
+::: omnirt.api.generate
 
-::: omnirt.validate
+::: omnirt.api.validate
 
-::: omnirt.pipeline
+::: omnirt.api.pipeline
 
-::: omnirt.list_available_models
+::: omnirt.api.list_available_models
 
-::: omnirt.describe_model
+::: omnirt.api.describe_model
 
-::: omnirt.available_presets
+::: omnirt.core.presets.available_presets

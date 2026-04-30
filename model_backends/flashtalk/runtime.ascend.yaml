@@ -1,0 +1,30 @@
+name: flashtalk
+device: ascend
+profile: ascend_910b
+
+sources:
+  repo_url: https://github.com/Soul-AILab/SoulX-FlashTalk.git
+  checkpoint_url: https://modelers.cn/Soul-AILab/SoulX-FlashTalk-14B.git
+  wav2vec_repo_id: TencentGameMate/chinese-wav2vec2-base
+
+paths:
+  runtime_dir: ${OMNIRT_HOME}/runtimes/flashtalk/ascend
+  repo_dir: ${OMNIRT_HOME}/model-repos/SoulX-FlashTalk
+
+runtime:
+  type: venv
+  python: "3.10"
+  env_script: /usr/local/Ascend/ascend-toolkit/set_env.sh
+  nproc_per_node: 8
+
+install:
+  requirements_file: ${OMNIRT_ROOT}/model_backends/flashtalk/requirements-ascend.txt
+  pip_index_url: https://pypi.tuna.tsinghua.edu.cn/simple
+  hf_endpoint: https://hf-mirror.com
+
+launch:
+  server_path: ${OMNIRT_ROOT}/model_backends/flashtalk/flashtalk_ws_server.py
+
+defaults:
+  ckpt_dir: models/SoulX-FlashTalk-14B
+  wav2vec_dir: models/chinese-wav2vec2-base

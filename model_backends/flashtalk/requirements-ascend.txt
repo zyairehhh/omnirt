@@ -1,0 +1,33 @@
+# Ascend note:
+# Do not force the PyTorch CPU wheel index here. A CPU-only torch build breaks imports in
+# upstream SoulX code that calls torch.cuda.* at module import time.
+#
+# Install torch/torchvision from your Ascend/CANN matched wheel source (vendor index or local wheelhouse),
+# for example by exporting PIP_EXTRA_INDEX_URL before running:
+#   python -m omnirt.cli.main runtime install flashtalk --device ascend
+#
+torch==2.7.1
+torchvision==0.22.1
+torch-npu==2.7.1.post2
+opencv-python-headless>=4.12.0.88
+diffusers>=0.34.0
+transformers>=4.46.3
+tokenizers>=0.20.3
+accelerate>=1.8.1
+tqdm
+imageio
+easydict
+ftfy
+imageio-ffmpeg
+scikit-image
+loguru
+gradio>=5.0.0
+xfuser>=0.4.3
+pyloudnorm
+librosa
+optimum-quanto==0.2.6
+huggingface_hub[cli]
+PyYAML>=6
+websockets>=13
+# Ascend GE / TBE graph compile may spawn Python hooks that `import attr` (from PyPI package `attrs`).
+attrs>=23.2.0

@@ -71,13 +71,14 @@
 | `soulx-liveact-14b` | portrait + audio | MP4 | 4 卡 Ascend 910B 推荐 |
 
 !!! info "SoulX 数字人模型是 script-backed 模型"
-    当前 `soulx-flashtalk-14b`、`soulx-flashhead-1.3b` 与 `soulx-liveact-14b` 都需要外部 SoulX 仓库 checkout、模型权重目录、wav2vec 目录和对应 Python 环境。内网/离线环境请参考 [国内部署](../deployment/china_mirrors.md) 的 "script-backed 模型镜像" 小节。
+    当前 `soulx-flashtalk-14b`、`soulx-flashhead-1.3b` 与 `soulx-liveact-14b` 都需要独立模型后端环境、外部 SoulX 仓库 checkout、模型权重目录和 wav2vec 目录。OmniRT 自身保持轻量框架环境，模型后端准备脚本放在 `model_backends/` 下。
 
 ## 实时 WebSocket 接入
 
-上面的 `generate` / HTTP 示例适合离线生成 MP4。如果要把 OmniRT 作为实时数字人模型服务接到 [OpenTalking](https://github.com/zyairehhh/opentalking) 等前端，需要先准备外部 SoulX-FlashTalk checkout、模型权重、wav2vec 权重、FlashTalk Python 环境和 Ascend/CANN 环境脚本，再启动 FlashTalk 兼容 WebSocket：
+上面的 `generate` / HTTP 示例适合离线生成 MP4。如果要把 OmniRT 作为实时数字人模型服务接到 [OpenTalking](https://github.com/zyairehhh/opentalking) 等前端，先准备 FlashTalk 模型后端，再启动 FlashTalk 兼容 WebSocket：
 
 ```bash
+omnirt runtime install flashtalk --device ascend
 bash scripts/start_flashtalk_ws.sh
 ```
 

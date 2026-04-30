@@ -4,7 +4,6 @@ from omnirt import core
 from omnirt import models
 from omnirt import requests
 from omnirt.core.presets import available_presets
-from omnirt.api import describe_model, generate, list_available_models, pipeline, validate
 from omnirt.core.types import (
     AudioToVideoRequest,
     EditRequest,
@@ -17,6 +16,19 @@ from omnirt.core.types import (
     TextToImageRequest,
     TextToVideoRequest,
 )
+
+_LAZY_API_NAMES = {"describe_model", "generate", "list_available_models", "pipeline", "validate"}
+
+
+def __getattr__(name: str):
+    if name in _LAZY_API_NAMES:
+        from omnirt import api
+
+        value = getattr(api, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module 'omnirt' has no attribute {name!r}")
+
 
 __all__ = [
     "GenerateRequest",
