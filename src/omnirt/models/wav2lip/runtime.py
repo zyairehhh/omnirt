@@ -73,12 +73,14 @@ class Wav2LipRealtimeRuntime:
     ) -> None:
         self.models_dir = Path(models_dir or os.environ.get("OMNIRT_WAV2LIP_MODELS_DIR", "./models")).resolve()
         self.device = device or os.environ.get("OMNIRT_WAV2LIP_DEVICE", "cuda")
+        self.face_detection_device = self._resolve_face_detection_device(self.device)
         self.work_root = Path(work_root or os.environ.get("OMNIRT_WAV2LIP_WORK_DIR", tempfile.gettempdir())).resolve()
         self.checkpoint = Path(
             os.environ.get("OMNIRT_WAV2LIP_CHECKPOINT", os.environ.get("OPENTALKING_WAV2LIP_CHECKPOINT", ""))
             or (self.models_dir / "wav2lip384.pth")
         ).expanduser().resolve()
         self.batch_size = max(1, int(os.environ.get("OMNIRT_WAV2LIP_BATCH_SIZE", "8")))
+        self.jpeg_quality = int(np.clip(self._parse_int(os.environ.get("OMNIRT_WAV2LIP_JPEG_QUALITY"), 85), 1, 100))
         self.pads = self._parse_pads(os.environ.get("OMNIRT_WAV2LIP_PADS", "0,10,0,0"))
         self.blend_config = BlendConfig(
             lower_lip_dynamic_expand=self._parse_float(
@@ -357,7 +359,7 @@ class Wav2LipRealtimeRuntime:
         input_size = int(self._model_bundle()["input_size"])
         use_enhanced = bool(session.enable_enhanced_postprocessing)
         metadata = mouth_metadata if mouth_metadata is not None else session.mouth_metadata
-        preprocessed_crop = self._metadata_model_crop(metadata, frame.shape[:2]) if session.preprocessed else None
+        preprocessed_crop = self._preprocessed_metadata_crop(metadata, frame.shape[:2]) if session.preprocessed else None
         if preprocessed_crop is not None:
             detector_crop = preprocessed_crop
             crop_source = "preprocessed"
@@ -434,12 +436,32 @@ class Wav2LipRealtimeRuntime:
         y2 = int(np.clip(y2, y1 + 1, frame_h))
         return y1, y2, x1, x2
 
+    @classmethod
+    def _preprocessed_metadata_crop(
+        cls,
+        metadata: dict[str, Any] | None,
+        frame_shape: tuple[int, int],
+    ) -> tuple[int, int, int, int] | None:
+        crop = cls._metadata_model_crop(metadata, frame_shape)
+        if crop is not None:
+            return crop
+        if isinstance(metadata, dict):
+            return metadata_face_box_to_crop(metadata, frame_shape)
+        return None
+
     def _model_bundle(self) -> dict[str, Any]:
         if self._torch_bundle is None:
             if not self.checkpoint.is_file():
                 raise Wav2LipRuntimeError(f"Wav2Lip checkpoint not found: {self.checkpoint}")
             self._torch_bundle = load_wav2lip_torch(self.checkpoint, self.device)
             self.device = str(self._torch_bundle["device"])
+            log.info(
+                "Wav2Lip inference device=%s | face_detection device=%s | checkpoint=%s | jpeg_quality=%d",
+                self.device,
+                self.face_detection_device,
+                self.checkpoint,
+                self.jpeg_quality,
+            )
         return self._torch_bundle
 
     def _face_alignment(self) -> FaceAlignment:
@@ -451,10 +473,19 @@ class Wav2LipRealtimeRuntime:
         self._face_detector = FaceAlignment(
             LandmarksType._2D,
             flip_input=False,
-            device=self.device,
+            device=self.face_detection_device,
             path_to_detector=s3fd,
         )
         return self._face_detector
+
+    @staticmethod
+    def _resolve_face_detection_device(model_device: str) -> str:
+        raw = os.environ.get("OMNIRT_WAV2LIP_FACE_DET_DEVICE", "").strip()
+        if raw:
+            return raw
+        if model_device.lower().startswith("npu"):
+            return "cpu"
+        return model_device
 
     def _detect_face_box(self, frame: np.ndarray) -> tuple[int, int, int, int]:
         rects = self._face_alignment().get_detections_for_batch(np.asarray([frame]))
@@ -640,9 +671,8 @@ class Wav2LipRealtimeRuntime:
             inner_mouth=tuple(point(p) for p in geometry.inner_mouth),
         )
 
-    @staticmethod
-    def _encode_jpeg_bgr(frame_bgr: np.ndarray) -> bytes:
-        ok, encoded = cv2.imencode(".jpg", frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+    def _encode_jpeg_bgr(self, frame_bgr: np.ndarray) -> bytes:
+        ok, encoded = cv2.imencode(".jpg", frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), self.jpeg_quality])
         if not ok:
             raise Wav2LipRuntimeError("Failed to JPEG-encode Wav2Lip frame.")
         return encoded.tobytes()
@@ -674,6 +704,15 @@ class Wav2LipRealtimeRuntime:
             return default
         try:
             return float(raw)
+        except ValueError:
+            return default
+
+    @staticmethod
+    def _parse_int(raw: str | None, default: int) -> int:
+        if raw is None or not raw.strip():
+            return default
+        try:
+            return int(raw)
         except ValueError:
             return default
 

@@ -6,13 +6,15 @@ OmniRT Native Realtime Avatar WebSocket is the long-term protocol for model-agno
 
 ```text
 WS /v1/avatar/realtime
-WS /v1/avatar/flashtalk
-WS /v1/avatar/wav2lip
+GET /v1/audio2video/models
+WS /v1/audio2video/flashtalk
+WS /v1/audio2video/wav2lip
 ```
 
-`/v1/avatar/flashtalk` and `/v1/avatar/wav2lip` keep the FlashTalk-compatible
-OpenTalking protocol. `/v1/avatar/realtime` is the model-agnostic control-plane
-protocol.
+`/v1/audio2video/flashtalk` and `/v1/audio2video/wav2lip` are the public
+FlashTalk-compatible streaming paths for OpenTalking. `/v1/avatar/flashtalk`
+and `/v1/avatar/wav2lip` remain compatibility aliases. `/v1/avatar/realtime`
+is the model-agnostic control-plane protocol.
 
 ## Session create
 
@@ -94,7 +96,7 @@ Jaw motion blending is disabled by default so enhanced mouth blending and jaw
 motion can be A/B tested independently.
 
 OpenTalking-compatible clients may also send the same fields in the `init`
-message to `/v1/avatar/wav2lip`.
+message to `/v1/audio2video/wav2lip`.
 
 ## Audio and video chunks
 

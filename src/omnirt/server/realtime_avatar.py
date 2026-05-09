@@ -162,6 +162,31 @@ def _as_bool(value: object, *, default: bool = False) -> bool:
     return bool(value)
 
 
+def _wav2lip_max_long_edge() -> int:
+    raw = os.environ.get("OMNIRT_WAV2LIP_MAX_LONG_EDGE", "0").strip()
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return 0
+
+
+def _scale_video_to_max_long_edge(video: "AvatarVideoSpec", max_long_edge: int) -> "AvatarVideoSpec":
+    if max_long_edge <= 0:
+        return video
+    long_edge = max(video.width, video.height)
+    if long_edge <= max_long_edge:
+        return video
+    scale = max_long_edge / float(long_edge)
+    return AvatarVideoSpec(
+        fps=video.fps,
+        width=max(1, int(round(video.width * scale))),
+        height=max(1, int(round(video.height * scale))),
+        frame_count=video.frame_count,
+        motion_frames_num=video.motion_frames_num,
+        slice_len=video.slice_len,
+    )
+
+
 class FakeRealtimeAvatarRuntime:
     """Small deterministic runtime used for protocol tests and cpu-stub demos."""
 
@@ -255,6 +280,8 @@ class RealtimeAvatarService:
             motion_frames_num=int(config.get("motion_frames_num", 1)),
             slice_len=int(config.get("slice_len", 28)),
         )
+        if model == "wav2lip":
+            video = _scale_video_to_max_long_edge(video, _wav2lip_max_long_edge())
         audio = AvatarAudioSpec(
             sample_rate=sample_rate,
             channels=int(config.get("channels", 1)),

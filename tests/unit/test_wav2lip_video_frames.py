@@ -9,6 +9,7 @@ import numpy as np
 
 import pytest
 
+from omnirt.models.wav2lip import loader as wav2lip_loader
 from omnirt.models.wav2lip.runtime import Wav2LipRealtimeRuntime, Wav2LipRuntimeError, _PreparedFrame
 from omnirt.server.realtime_avatar import (
     AvatarAudioSpec,
@@ -75,6 +76,48 @@ def test_frame_sequence_uses_per_frame_mouth_metadata(tmp_path: Path, monkeypatc
 
     assert len(state.prepared_frames) == 2
     assert [item["animation"]["mouth_center"] for item in seen] == [[0.25, 0.5], [0.75, 0.5]]
+
+
+def test_runtime_defaults_face_detection_to_cpu_for_npu(monkeypatch) -> None:
+    monkeypatch.setenv("OMNIRT_WAV2LIP_DEVICE", "npu:0")
+    monkeypatch.delenv("OMNIRT_WAV2LIP_FACE_DET_DEVICE", raising=False)
+
+    runtime = Wav2LipRealtimeRuntime()
+
+    assert runtime.device == "npu:0"
+    assert runtime.face_detection_device == "cpu"
+
+
+def test_runtime_uses_explicit_face_detection_device(monkeypatch) -> None:
+    monkeypatch.setenv("OMNIRT_WAV2LIP_DEVICE", "cuda")
+    monkeypatch.setenv("OMNIRT_WAV2LIP_FACE_DET_DEVICE", "cpu")
+
+    runtime = Wav2LipRealtimeRuntime()
+
+    assert runtime.device == "cuda"
+    assert runtime.face_detection_device == "cpu"
+
+
+def test_wav2lip_auto_device_uses_configured_npu_index(monkeypatch) -> None:
+    class FakeNpu:
+        @staticmethod
+        def is_available() -> bool:
+            return True
+
+    class FakeCuda:
+        @staticmethod
+        def is_available() -> bool:
+            return False
+
+    class FakeTorch:
+        npu = FakeNpu()
+        cuda = FakeCuda()
+
+    monkeypatch.setenv("OMNIRT_WAV2LIP_NPU_INDEX", "3")
+    monkeypatch.setattr(wav2lip_loader, "_try_import_torch_npu", lambda: True)
+
+    assert wav2lip_loader._resolve_torch_device(FakeTorch, "auto") == "npu:3"
+    assert wav2lip_loader._resolve_torch_device(FakeTorch, "npu") == "npu:3"
 
 
 def test_frame_sequence_preparation_is_reused_across_sessions(tmp_path: Path, monkeypatch) -> None:
@@ -272,6 +315,55 @@ def test_preprocessed_frame_metadata_without_trusted_model_crop_uses_detector(tm
 
     assert detector_calls == 1
     assert state.prepared_frames[0].coords == (0, 24, 0, 24)
+
+
+def test_preprocessed_frame_metadata_with_face_box_skips_detector(tmp_path: Path, monkeypatch) -> None:
+    frames = tmp_path / "frames"
+    frames.mkdir()
+    _write_frame(frames / "frame_00000.jpg", 10)
+    metadata_path = tmp_path / "mouth_metadata.json"
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "frames": {
+                    "frame_00000.jpg": {
+                        "source_frame_hash": _sha256(frames / "frame_00000.jpg"),
+                        "face_box": [0.25, 0.125, 0.75, 0.875],
+                        "animation": {"mouth_center": [0.5, 0.5]},
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    runtime = Wav2LipRealtimeRuntime(device="cpu")
+    monkeypatch.setattr(runtime, "_model_bundle", lambda: {"input_size": 8})
+    monkeypatch.setattr(
+        runtime,
+        "_detect_face_box",
+        lambda frame: pytest.fail("preprocessed face_box metadata must skip detector"),
+    )
+    monkeypatch.setattr(runtime, "_fallback_mouth_geometry", lambda face: None)
+
+    session = RealtimeAvatarSession(
+        session_id="s",
+        trace_id="t",
+        model="wav2lip",
+        backend="test",
+        prompt="",
+        image_bytes=b"ref",
+        reference_mode="frames",
+        ref_frame_dir=str(frames),
+        ref_frame_metadata_path=str(metadata_path),
+        audio=AvatarAudioSpec(),
+        video=AvatarVideoSpec(width=24, height=24),
+        enable_enhanced_postprocessing=True,
+        preprocessed=True,
+    )
+
+    state = runtime._session_state(session)
+
+    assert state.prepared_frames[0].coords == (3, 21, 6, 18)
 
 
 def test_preprocessed_frame_metadata_rejects_hash_mismatch(tmp_path: Path, monkeypatch) -> None:
