@@ -31,7 +31,7 @@ def test_easy_mask_matches_lip_polygon_and_feathers_edges() -> None:
     assert mask.shape == (384, 384, 1)
     assert float(mask[220, 192, 0]) > 0.85
     assert float(mask[0, 0, 0]) == 0.0
-    assert 0.0 < float(mask[80, 192, 0]) < 0.85
+    assert 0.0 < float(mask[300, 192, 0]) < 0.85
 
 
 def test_easy_blend_keeps_non_mouth_pixels_from_original() -> None:
@@ -48,6 +48,25 @@ def test_easy_blend_keeps_non_mouth_pixels_from_original() -> None:
 
     assert np.array_equal(blended[0, 0], original[0, 0])
     assert np.mean(np.abs(blended[220, 192].astype(np.int16) - pred[220, 192].astype(np.int16))) < 20
+
+
+def test_easy_mask_does_not_bleed_into_distant_face_or_crop_edges() -> None:
+    geometry = MouthGeometry(
+        center=(192, 220),
+        rx=42,
+        ry=14,
+        outer_lip=((150, 220), (170, 206), (192, 202), (214, 206), (234, 220), (214, 234), (192, 238), (170, 234)),
+    )
+
+    mask = build_easy_mouth_blend_mask((384, 384), geometry, mask_dilation=2.5, mask_feathering=2.0)
+
+    assert float(mask[220, 192, 0]) > 0.85
+    assert float(mask[80, 192, 0]) < 0.02
+    assert float(mask[330, 192, 0]) < 0.02
+    assert float(mask[:, 0, 0].max()) == 0.0
+    assert float(mask[:, -1, 0].max()) == 0.0
+    assert float(mask[0, :, 0].max()) == 0.0
+    assert float(mask[-1, :, 0].max()) == 0.0
 
 
 def test_enhanced_mask_expands_lower_lip_without_reaching_chin() -> None:

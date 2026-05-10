@@ -248,6 +248,30 @@ def build_mouth_blend_mask(
     return np.expand_dims(mask, axis=2)
 
 
+def _easy_roi_guard_mask(
+    shape: tuple[int, int],
+    geometry: MouthGeometry,
+    *,
+    mask_dilation: float,
+    mask_feathering: float,
+) -> np.ndarray:
+    height, width = shape
+    cx, cy = geometry.center
+    x_radius = max(geometry.rx * (1.35 + mask_dilation * 0.55), geometry.rx + 12.0)
+    upper_radius = max(geometry.ry * (2.0 + mask_dilation * 0.7), geometry.ry + 12.0)
+    lower_radius = max(geometry.ry * (3.2 + mask_dilation * 0.9), geometry.ry + 18.0)
+    left = max(0, int(np.floor(cx - x_radius)))
+    right = min(width, int(np.ceil(cx + x_radius + 1)))
+    top = max(0, int(np.floor(cy - upper_radius)))
+    bottom = min(height, int(np.ceil(cy + lower_radius + 1)))
+    guard = np.zeros(shape, dtype=np.uint8)
+    if right <= left or bottom <= top:
+        return guard.astype(np.float32)
+    guard[top:bottom, left:right] = 255
+    feather = max(3.0, min(geometry.rx, geometry.ry) * max(0.0, mask_feathering) * 0.35)
+    return _soften(guard, feather_px=feather)
+
+
 def _ellipse_points(geometry: MouthGeometry, *, samples: int = 20) -> np.ndarray:
     angles = np.linspace(0.0, 2.0 * np.pi, num=max(8, samples), endpoint=False)
     cx, cy = geometry.center
@@ -307,7 +331,23 @@ def build_easy_mouth_blend_mask(
         if blur % 2 == 0:
             blur += 1
         masked_diff = cv2.GaussianBlur(masked_diff, (blur, blur), 0)
-    return np.expand_dims(masked_diff.astype(np.float32) / 255.0, axis=2)
+    mask_f = masked_diff.astype(np.float32) / 255.0
+    guard = _easy_roi_guard_mask(
+        shape,
+        geometry,
+        mask_dilation=mask_dilation,
+        mask_feathering=mask_feathering,
+    )
+    mask_f = np.clip(mask_f * guard, 0.0, 1.0)
+    mask_f[mask_f < 0.02] = 0.0
+    mask_f[:, 0] = 0.0
+    mask_f[:, -1] = 0.0
+    mask_f[0, :] = 0.0
+    mask_f[-1, :] = 0.0
+    peak = float(mask_f.max())
+    if peak > 1e-6:
+        mask_f = mask_f / peak
+    return np.expand_dims(mask_f, axis=2)
 
 
 def build_jaw_motion_mask(
