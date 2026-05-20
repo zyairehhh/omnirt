@@ -13,12 +13,13 @@ def test_quicktalk_cuda_pins_torchvision_to_pytorch_index() -> None:
     assert sources["torchvision"]["index"] == "pytorch-cu128"
 
 
-def test_quicktalk_serving_extra_does_not_install_onnx_runtime() -> None:
+def test_quicktalk_serving_extra_keeps_converter_dependencies_separate() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text())
 
     quicktalk_deps = pyproject["project"]["optional-dependencies"]["quicktalk-cuda"]
     normalized = [dep.split("[", 1)[0].split(">", 1)[0].split("=", 1)[0] for dep in quicktalk_deps]
 
+    assert "onnxruntime" in normalized
     assert "onnx" not in normalized
     assert "onnx2torch" not in normalized
     assert "onnxruntime-gpu" not in normalized

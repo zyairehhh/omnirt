@@ -63,6 +63,7 @@ wav2lip-cuda = [
 ]
 quicktalk-cuda = [
   "insightface>=0.7",
+  "onnxruntime>=1.18",
   "kornia>=0.7",
   "librosa>=0.10",
   "opencv-python-headless>=4.8",
