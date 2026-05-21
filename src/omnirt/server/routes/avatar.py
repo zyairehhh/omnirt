@@ -369,6 +369,30 @@ async def preload_wav2lip_reference(request: Request) -> dict[str, object]:
         return _runtime_error_payload(exc)
 
 
+@router.post("/v1/audio2video/quicktalk/preload")
+@router.post("/v1/avatar/quicktalk/preload")
+async def preload_quicktalk_reference(request: Request) -> dict[str, object]:
+    payload = await request.json()
+    if not isinstance(payload, dict):
+        return {"type": "error", "code": "bad_json", "message": "Expected a JSON object."}
+    service = request.app.state.realtime_avatar_service
+    try:
+        return await _preload_reference_async(
+            request,
+            service,
+            model="quicktalk",
+            backend=request.app.state.default_backend,
+            config={
+                **dict(getattr(request.app.state, "default_request_config", {}) or {}),
+                **_quicktalk_config_from_payload(payload),
+            },
+        )
+    except RealtimeAvatarError as exc:
+        return _error_payload(exc)
+    except Exception as exc:
+        return _runtime_error_payload(exc)
+
+
 async def _flashtalk_compatible_loop(websocket: WebSocket, *, model: str) -> None:
     await websocket.accept()
     service = websocket.app.state.realtime_avatar_service

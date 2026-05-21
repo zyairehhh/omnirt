@@ -1100,6 +1100,10 @@ class AvatarRuntimeRouter:
             preload = getattr(self.fasterliveportrait, "preload_reference", None)
             if callable(preload):
                 return dict(preload(session))
+        if session.model == "quicktalk" and self.quicktalk is not None:
+            preload = getattr(self.quicktalk, "preload_reference", None)
+            if callable(preload):
+                return dict(preload(session))
         if session.model != "wav2lip" or self.wav2lip is None:
             raise Wav2LipRuntimeError(f"Preload is not supported for model: {session.model}")
         return self.wav2lip.preload_reference(session)

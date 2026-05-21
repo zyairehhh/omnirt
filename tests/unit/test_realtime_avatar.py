@@ -24,12 +24,14 @@ from omnirt.server.realtime_avatar import (  # noqa: E402
     MAGIC_AUDIO,
     MAGIC_VIDEO,
     RealtimeAvatarService,
+    FakeRealtimeAvatarRuntime,
     RealtimeAvatarError,
     decode_jpeg_sequence,
     encode_jpeg_sequence,
     _scale_video_to_max_long_edge,
 )  # noqa: E402
 
+from omnirt.models.wav2lip.runtime import AvatarRuntimeRouter  # noqa: E402
 from omnirt.models.fasterliveportrait import runtime as flp_runtime  # noqa: E402
 from omnirt.models.fasterliveportrait.runtime import (  # noqa: E402
     FASTLIVEPORTRAIT_MODEL_ID,
@@ -1639,11 +1641,180 @@ def test_quicktalk_runtime_passes_asset_face_cache_to_worker(tmp_path: Path, mon
         checkpoint=tmp_path / "quicktalk.pth",
         template_cache_dir=tmp_path / "templates",
     )
+    monkeypatch.setattr(
+        runtime,
+        "_template_video_for",
+        lambda session: Path(session.template_video or ""),
+    )
 
     runtime._worker_for(session)
 
     assert captured["face_cache_file"] == tmp_path / "quicktalk" / "face_cache_v3_900.npz"
 
+
+def test_quicktalk_preload_endpoint_uses_runtime_cache(tmp_path: Path) -> None:
+    class FakeQuickTalkRuntime:
+        def __init__(self) -> None:
+            self.calls: list[object] = []
+
+        def preload_reference(self, session):
+            self.calls.append(session)
+            return {
+                "type": "preload_result",
+                "frames": 25,
+                "elapsed_ms": 12.5,
+                "cache_hit": len(self.calls) > 1,
+            }
+
+    template = tmp_path / "quicktalk" / "template_512x512.mp4"
+    cache = tmp_path / "quicktalk" / "face_cache_v3_512x512.npz"
+    template.parent.mkdir()
+    template.write_bytes(b"template")
+    cache.write_bytes(b"cache")
+
+    quicktalk_runtime = FakeQuickTalkRuntime()
+    app = create_app(default_backend="cpu-stub")
+    app.state.realtime_avatar_service = RealtimeAvatarService(
+        runtime=AvatarRuntimeRouter(
+            fallback=FakeRealtimeAvatarRuntime(),
+            quicktalk=quicktalk_runtime,
+        ),
+        allowed_frame_roots=[tmp_path],
+    )
+    client = TestClient(app)
+    payload = {
+        "template_mode": "video",
+        "template_video": str(template),
+        "quicktalk_face_cache": str(cache),
+        "width": 512,
+        "height": 512,
+        "fps": 25,
+    }
+
+    first = client.post("/v1/audio2video/quicktalk/preload", json=payload)
+    second = client.post("/v1/avatar/quicktalk/preload", json=payload)
+
+    assert first.status_code == 200
+    assert first.json()["cache_hit"] is False
+    assert second.status_code == 200
+    assert second.json()["cache_hit"] is True
+    assert len(quicktalk_runtime.calls) == 2
+    assert quicktalk_runtime.calls[0].model == "quicktalk"
+    assert quicktalk_runtime.calls[0].template_mode == "video"
+    assert quicktalk_runtime.calls[0].template_video == str(template)
+    assert quicktalk_runtime.calls[0].quicktalk_face_cache == str(cache)
+
+
+
+def test_quicktalk_runtime_evicts_old_workers_when_cache_limit_is_exceeded(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from omnirt.models.quicktalk import runtime as quicktalk_runtime
+
+    monkeypatch.setenv("OMNIRT_QUICKTALK_WORKER_CACHE_MAX", "1")
+    closed: list[str] = []
+
+    class FakeWorker:
+        def __init__(self, *, template_video: Path, **_: object) -> None:
+            self.template_video = template_video
+            self.restore_contexts = [object()]
+
+        def make_state(self) -> object:
+            return object()
+
+        def close(self) -> None:
+            closed.append(self.template_video.name)
+
+    monkeypatch.setattr(
+        quicktalk_runtime.QuickTalkRealtimeRuntime,
+        "_worker_class",
+        staticmethod(lambda: FakeWorker),
+    )
+    first_template = tmp_path / "first.mp4"
+    second_template = tmp_path / "second.mp4"
+    first_template.write_bytes(b"first")
+    second_template.write_bytes(b"second")
+    service = RealtimeAvatarService(allowed_frame_roots=[tmp_path])
+    runtime = quicktalk_runtime.QuickTalkRealtimeRuntime(
+        model_root=tmp_path / "model",
+        checkpoint=tmp_path / "quicktalk.pth",
+        template_cache_dir=tmp_path / "templates",
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_template_video_for",
+        lambda session: Path(session.template_video or ""),
+    )
+    first = service.create_session(
+        model="quicktalk",
+        image_bytes=_png_bytes((64, 64)),
+        config={"template_mode": "video", "template_video": str(first_template)},
+    )
+    second = service.create_session(
+        model="quicktalk",
+        image_bytes=_png_bytes((64, 64)),
+        config={"template_mode": "video", "template_video": str(second_template)},
+    )
+
+    first_result = runtime.preload_reference(first)
+    second_result = runtime.preload_reference(second)
+
+    assert first_result["cache_hit"] is False
+    assert second_result["cache_hit"] is False
+    assert closed == ["first.mp4"]
+    assert len(runtime._workers) == 1
+
+
+def test_quicktalk_runtime_preload_reports_worker_cache_hit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from omnirt.models.quicktalk import runtime as quicktalk_runtime
+
+    monkeypatch.setenv("OMNIRT_QUICKTALK_WORKER_CACHE_MAX", "2")
+    build_count = 0
+
+    class FakeWorker:
+        restore_contexts = [object()]
+
+        def __init__(self, **_: object) -> None:
+            nonlocal build_count
+            build_count += 1
+
+        def make_state(self) -> object:
+            return object()
+
+    monkeypatch.setattr(
+        quicktalk_runtime.QuickTalkRealtimeRuntime,
+        "_worker_class",
+        staticmethod(lambda: FakeWorker),
+    )
+    template = tmp_path / "template.mp4"
+    template.write_bytes(b"template")
+    service = RealtimeAvatarService(allowed_frame_roots=[tmp_path])
+    runtime = quicktalk_runtime.QuickTalkRealtimeRuntime(
+        model_root=tmp_path / "model",
+        checkpoint=tmp_path / "quicktalk.pth",
+        template_cache_dir=tmp_path / "templates",
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_template_video_for",
+        lambda session: Path(session.template_video or ""),
+    )
+    session = service.create_session(
+        model="quicktalk",
+        image_bytes=_png_bytes((64, 64)),
+        config={"template_mode": "video", "template_video": str(template)},
+    )
+
+    first = runtime.preload_reference(session)
+    second = runtime.preload_reference(session)
+
+    assert first["cache_hit"] is False
+    assert second["cache_hit"] is True
+    assert build_count == 1
 
 def test_wav2lip_init_accepts_frame_metadata_path(tmp_path: Path) -> None:
     client = TestClient(create_app(default_backend="cpu-stub"))

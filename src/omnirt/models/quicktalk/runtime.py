@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 import hashlib
 import os
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
@@ -57,7 +58,8 @@ class QuickTalkRealtimeRuntime:
         self.resolution = int(os.environ.get("OMNIRT_QUICKTALK_RESOLUTION", "256"))
         self.neck_fade_start = self._optional_float(os.environ.get("OMNIRT_QUICKTALK_NECK_FADE_START", "0.72"))
         self.neck_fade_end = self._optional_float(os.environ.get("OMNIRT_QUICKTALK_NECK_FADE_END", "0.88"))
-        self._workers: dict[str, Any] = {}
+        self.worker_cache_max = self._positive_int(os.environ.get("OMNIRT_QUICKTALK_WORKER_CACHE_MAX", "1"), 1)
+        self._workers: OrderedDict[str, Any] = OrderedDict()
         self._states: dict[str, Any] = {}
 
     @staticmethod
@@ -65,6 +67,14 @@ class QuickTalkRealtimeRuntime:
         if raw is None or not raw.strip():
             return None
         return float(raw)
+
+    @staticmethod
+    def _positive_int(raw: str | None, default: int) -> int:
+        try:
+            value = int(str(raw or "").strip())
+        except ValueError:
+            return default
+        return max(1, value)
 
     @staticmethod
     def _target_size(session: RealtimeAvatarSession) -> tuple[int, int]:
@@ -208,13 +218,36 @@ class QuickTalkRealtimeRuntime:
             ]
         )
 
-    def _worker_for(self, session: RealtimeAvatarSession):
+    @staticmethod
+    def _close_worker(worker: Any) -> None:
+        close = getattr(worker, "close", None)
+        if callable(close):
+            close()
+            return
+        try:
+            import gc
+            import torch
+
+            del worker
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            return
+
+    def _enforce_worker_cache_limit(self) -> None:
+        while len(self._workers) > self.worker_cache_max:
+            _, old_worker = self._workers.popitem(last=False)
+            self._close_worker(old_worker)
+
+    def _worker_for_with_cache_status(self, session: RealtimeAvatarSession) -> tuple[Any, bool]:
         template_video = self._template_video_for(session)
         face_cache_file = Path(session.quicktalk_face_cache) if session.quicktalk_face_cache else None
         key = self._worker_key(template_video, face_cache_file)
         worker = self._workers.get(key)
         if worker is not None:
-            return worker
+            self._workers.move_to_end(key)
+            return worker, True
 
         self.template_cache_dir.mkdir(parents=True, exist_ok=True)
         worker = self._worker_class()(
@@ -235,6 +268,11 @@ class QuickTalkRealtimeRuntime:
             checkpoint=self.checkpoint,
         )
         self._workers[key] = worker
+        self._enforce_worker_cache_limit()
+        return worker, False
+
+    def _worker_for(self, session: RealtimeAvatarSession):
+        worker, _cache_hit = self._worker_for_with_cache_status(session)
         return worker
 
     def render_chunk(self, session: RealtimeAvatarSession, pcm_s16le: bytes) -> bytes:
@@ -251,6 +289,23 @@ class QuickTalkRealtimeRuntime:
         if not frames:
             raise QuickTalkRuntimeError("QuickTalk produced no frames for audio chunk.")
         return encode_jpeg_sequence(frames)
+
+    def preload_reference(self, session: RealtimeAvatarSession) -> dict[str, object]:
+        import time
+
+        started = time.monotonic()
+        worker, cache_hit = self._worker_for_with_cache_status(session)
+        state = worker.make_state()
+        self._states[session.session_id] = state
+        restore_contexts = getattr(worker, "restore_contexts", None)
+        frames = len(restore_contexts) if restore_contexts is not None else None
+        return {
+            "type": "preload_result",
+            "frames": frames,
+            "elapsed_ms": round((time.monotonic() - started) * 1000.0, 3),
+            "cache_hit": cache_hit,
+            "cache_source": "worker",
+        }
 
     @staticmethod
     def _encode_jpeg_bgr(frame_bgr: np.ndarray) -> bytes:
