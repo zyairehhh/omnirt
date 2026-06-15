@@ -173,6 +173,7 @@ plugins:
             - Community:
                 - Overview: community/index.md
                 - Publishing Docs: community/publishing_docs.md
+                - v0.1.0 Release Verification: community/release-v0.1.0.md
 
 extra_css:
   - stylesheets/extra.css
@@ -247,3 +248,4 @@ nav:
   - 社区:
       - 概览: community/index.md
       - 文档发布: community/publishing_docs.md
+      - v0.1.0 发版验证: community/release-v0.1.0.md
