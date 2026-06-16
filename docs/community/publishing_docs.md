@@ -33,9 +33,20 @@ mkdocs build --strict
 - 在 `main` 分支 push 时自动触发
 - 也支持通过 `workflow_dispatch` 手动触发
 - 用 `pip install -e '.[docs]'` 安装文档依赖
-- 通过 `mkdocs build --strict` 构建静态站点
-- 上传 `site/` 目录作为 Pages artifact
-- 通过官方 GitHub Pages actions 流程部署
+- 通过 `mkdocs build --strict` 构建当前 ref 的文档
+- 用 `mike` 把当前文档发布到 `gh-pages` 分支里的版本目录
+- 从 `gh-pages` 分支导出完整版本化站点到 `site/`
+- 如果仓库已经启用 GitHub Pages，则上传 `site/` 目录作为 Pages artifact
+- 如果仓库已经启用 GitHub Pages，则通过官方 GitHub Pages actions 流程部署
+
+## 版本化文档
+
+默认的 `main` push 会发布两个入口：
+
+- `/main/`：当前 main 分支文档
+- `/latest/`：指向当前 main 文档的别名
+
+发布正式版本文档时，通过手动触发 docs workflow，把 `version` 设为具体版本号，例如 `v0.1.0`。如需把某个版本设为默认入口，把 `default_version` 设为对应版本或别名。`mike` 会维护 `versions.json`，Material for MkDocs 会在站点里显示版本切换器。
 
 ## 站点 URL 与路径模型
 
@@ -53,4 +64,4 @@ mkdocs build --strict
 - 尽量保持文档路径稳定，主要通过 `mkdocs.yml` 调整导航
 - 在合并较大的文档改动前，先跑一次 `mkdocs build --strict`
 
-如果仓库还没有启用 GitHub Pages，需要先在仓库设置里把 Pages source 切到 GitHub Actions。完成这一步后，后续发布都应由 workflow 接管。
+如果仓库还没有启用 GitHub Pages，workflow 仍会维护 `gh-pages` 里的版本化文档内容，但不会执行 Pages artifact 部署。需要在仓库设置里把 Pages source 切到 GitHub Actions；完成这一步后，后续线上发布由 workflow 接管。

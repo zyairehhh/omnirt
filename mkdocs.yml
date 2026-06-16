@@ -173,6 +173,10 @@ plugins:
                 - Overview: community/index.md
                 - Publishing Docs: community/publishing_docs.md
 
+extra:
+  version:
+    provider: mike
+
 extra_css:
   - stylesheets/extra.css
 

@@ -33,9 +33,20 @@ Deployment behavior:
 - triggers on pushes to `main`
 - can also be started manually through `workflow_dispatch`
 - installs the docs dependencies with `pip install -e '.[docs]'`
-- builds the static site with `mkdocs build --strict`
-- uploads the generated `site/` directory as the Pages artifact
-- deploys through the official GitHub Pages actions flow
+- builds the current ref with `mkdocs build --strict`
+- uses `mike` to publish the current docs into a versioned directory on the `gh-pages` branch
+- exports the full versioned site from `gh-pages` into `site/`
+- uploads the generated `site/` directory as the Pages artifact when GitHub Pages is enabled
+- deploys through the official GitHub Pages actions flow when GitHub Pages is enabled
+
+## Versioned docs
+
+A normal `main` push publishes two entries:
+
+- `/main/`: the current main-branch documentation
+- `/latest/`: an alias pointing at the current main docs
+
+For a formal release, start the docs workflow manually and set `version` to the release number, for example `v0.1.0`. To make a version the default landing point, set `default_version` to that version or alias. `mike` maintains `versions.json`, and Material for MkDocs renders the version selector in the site UI.
 
 ## Site URL and path model
 
@@ -53,4 +64,4 @@ That means links and local previews should assume the docs live under the `/omni
 - prefer stable document paths and reorganize the nav through `mkdocs.yml`
 - run `mkdocs build --strict` before merging significant doc changes
 
-If GitHub Pages is not yet enabled for the repository, switch the Pages source to GitHub Actions in the repository settings once. After that, deployments should be handled entirely by the workflow.
+If GitHub Pages is not yet enabled for the repository, the workflow still maintains the versioned docs content on `gh-pages`, but it skips the Pages artifact deployment. Switch the Pages source to GitHub Actions in the repository settings once; after that, live deployments are handled by the workflow.

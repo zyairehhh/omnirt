@@ -5,11 +5,29 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      version:
+        description: Docs version path to deploy, for example main or v0.1.0
+        required: false
+        default: main
+      aliases:
+        description: Space-separated aliases for this docs version
+        required: false
+        default: latest
+      default_version:
+        description: Version or alias that the docs root should redirect to
+        required: false
+        default: latest
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
+
+env:
+  DOCS_VERSION: ${{ github.event.inputs.version || 'main' }}
+  DOCS_ALIASES: ${{ github.event.inputs.aliases || 'latest' }}
+  DOCS_DEFAULT_VERSION: ${{ github.event.inputs.default_version || 'latest' }}
 
 concurrency:
   group: pages
@@ -22,10 +40,13 @@ jobs:
       name: github-pages
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - uses: actions/configure-pages@v5
+        if: ${{ github.event.repository.has_pages }}
         with:
           enablement: true
       - name: Install documentation dependencies
@@ -34,12 +55,30 @@ jobs:
         run: python scripts/check_docs_tier_policy.py
       - name: Build documentation site
         run: mkdocs build --strict
+      - name: Configure versioned docs git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Deploy versioned docs to gh-pages
+        run: |
+          git fetch origin gh-pages --depth=1 || true
+          read -r -a aliases <<< "${DOCS_ALIASES}"
+          mike deploy --push --update-aliases --alias-type=redirect "${DOCS_VERSION}" "${aliases[@]}"
+          mike set-default --push "${DOCS_DEFAULT_VERSION}"
+      - name: Export versioned docs artifact
+        run: |
+          rm -rf site /tmp/omnirt-gh-pages
+          git worktree add /tmp/omnirt-gh-pages gh-pages
+          rsync -a --delete --exclude .git /tmp/omnirt-gh-pages/ site/
+          git worktree remove /tmp/omnirt-gh-pages
       - uses: actions/upload-pages-artifact@v3
+        if: ${{ github.event.repository.has_pages }}
         with:
           path: site
 
   deploy:
     needs: build
+    if: ${{ github.event.repository.has_pages }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
