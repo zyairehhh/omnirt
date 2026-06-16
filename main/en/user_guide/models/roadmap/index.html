@@ -1,0 +1,3966 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Open digital-human multimodal generation runtime with CUDA and Ascend backends.">
+      
+      
+      
+        <link rel="canonical" href="https://datascale-ai.github.io/omnirt/main/en/user_guide/models/roadmap/">
+      
+      
+        <link rel="prev" href="../support_status/">
+      
+      
+        <link rel="next" href="../../features/">
+      
+      
+        
+          <link rel="alternate" href="../../../../user_guide/models/roadmap/" hreflang="zh">
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+      
+      
+      <link rel="icon" href="../../../../assets/logos/omnirt-mark.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Roadmap - OmniRT</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#model-support-roadmap" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../" title="OmniRT" class="md-header__button md-logo" aria-label="OmniRT" data-md-component="logo">
+      
+  <img src="../../../../assets/logos/omnirt-mark.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OmniRT
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Roadmap
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="indigo"  aria-label="切换到深色"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到深色" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到浅色"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../../../user_guide/models/roadmap/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/datascale-ai/omnirt" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    datascale-ai/omnirt
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../developer_guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Developer Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../api_reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../cli_reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../community/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Community
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../" title="OmniRT" class="md-nav__button md-logo" aria-label="OmniRT" data-md-component="logo">
+      
+  <img src="../../../../assets/logos/omnirt-mark.svg" alt="logo">
+
+    </a>
+    OmniRT
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/datascale-ai/omnirt" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    datascale-ai/omnirt
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting_started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../generation/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generation
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_3" id="__nav_2_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Generation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generation/text2image/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Text to Image
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generation/text2audio/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Text to Audio
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generation/audio2text/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audio to Text
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generation/image2image/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image to Image
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generation/text2video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Text to Video
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generation/image2video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image to Video
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generation/talking_head/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Talking Head
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../serving/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serving
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_4" id="__nav_2_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Serving
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../serving/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../serving/python_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../serving/http_server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../serving/flashtalk_ws/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FlashTalk WebSocket
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../serving/wav2lip_ws/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wav2Lip WebSocket
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../serving/musetalk_ws/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MuseTalk WebSocket
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../serving/realtime_avatar_ws/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Realtime Avatar WebSocket
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../deployment/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_5" id="__nav_2_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/cuda/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CUDA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/ascend/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ascend Backend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/china_mirrors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Domestic Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/distributed_serving/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distributed Serving
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_6" id="__nav_2_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Models
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supported_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../support_status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support Status
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#current-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current snapshot
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#planning-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Planning principles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registry-key-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registry key convention
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#support-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Support tiers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase roadmap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase roadmap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-a-close-the-digital-human-main-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase A: Close the Digital-Human Main Loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-b-digital-human-asset-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase B: Digital-Human Asset Production
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-c-speech-understanding-and-post-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase C: Speech Understanding and Post-Processing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-d-general-model-contraction-and-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase D: General-Model Contraction and Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#historical-compatibility-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Historical compatibility list
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#detailed-target-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detailed target list
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#capability-roadmap-by-model-family" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Capability roadmap by model family
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Capability roadmap by model family">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#stable-diffusion-family" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stable Diffusion family
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flux-family" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flux family
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qwen-image-family" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Qwen image family
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generalist-image-families" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generalist image families
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video-families" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video families
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-implementation-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended implementation order
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#models-to-deprioritize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Models to deprioritize
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source references
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../features/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_7" id="__nav_2_7_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/presets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Presets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/service_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Service Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/dispatch_queue/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dispatch & Queue
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/telemetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Telemetry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../developer_guide/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer_guide/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer_guide/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer_guide/legacy_optimization_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy Optimization Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer_guide/benchmark_baseline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmark Baseline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer_guide/flashhead_benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FlashHead Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer_guide/cosyvoice_benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CosyVoice Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer_guide/model_onboarding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Onboarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer_guide/backend_onboarding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Onboarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../api_reference/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api_reference/top_level/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    omnirt
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api_reference/requests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    omnirt.requests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api_reference/types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    omnirt.core.types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api_reference/registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    omnirt.core.registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api_reference/presets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    omnirt.core.presets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api_reference/validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    omnirt.core.validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api_reference/engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    omnirt.engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../cli_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../community/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Community
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Community
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../community/publishing_docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publishing Docs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#current-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current snapshot
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#planning-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Planning principles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registry-key-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registry key convention
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#support-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Support tiers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase roadmap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase roadmap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-a-close-the-digital-human-main-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase A: Close the Digital-Human Main Loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-b-digital-human-asset-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase B: Digital-Human Asset Production
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-c-speech-understanding-and-post-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase C: Speech Understanding and Post-Processing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-d-general-model-contraction-and-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase D: General-Model Contraction and Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#historical-compatibility-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Historical compatibility list
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#detailed-target-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detailed target list
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#capability-roadmap-by-model-family" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Capability roadmap by model family
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Capability roadmap by model family">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#stable-diffusion-family" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stable Diffusion family
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flux-family" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flux family
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qwen-image-family" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Qwen image family
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generalist-image-families" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generalist image families
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video-families" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video families
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-implementation-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended implementation order
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#models-to-deprioritize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Models to deprioritize
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source references
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../../../" class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../../" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    User Guide
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Models
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/datascale-ai/omnirt/edit/main/docs/user_guide/models/roadmap.en.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="model-support-roadmap">Model Support Roadmap<a class="headerlink" href="#model-support-roadmap" title="Permanent link">&para;</a></h1>
+<p>This document defines the recommended digital-human roadmap for <code>omnirt</code> based on the current implemented baseline and the next support waves that should follow.</p>
+<p>OmniRT is no longer optimizing for broad image / video model count. Existing integrations remain available in the registry, but the roadmap now prioritizes the digital-human vertical:</p>
+<ul>
+<li>voice generation, voice reuse, and voice understanding</li>
+<li>audio-driven avatar video</li>
+<li>realtime serving and resident workers</li>
+<li>avatar assets and idle video material</li>
+<li>digital-human post-processing</li>
+<li>reproducible CUDA / Ascend deployment</li>
+</ul>
+<p>Status note:</p>
+<ul>
+<li>Last reviewed: 2026-05-11</li>
+<li>This is a recommended OmniRT roadmap, not an upstream framework commitment</li>
+</ul>
+<p>Current implementation note:</p>
+<ul>
+<li>OmniRT currently ships <code>sd15</code>, <code>sd21</code>, <code>sdxl-base-1.0</code>, <code>sdxl-turbo</code>, <code>sd3-medium</code>, <code>sd3.5-large</code>, <code>sd3.5-large-turbo</code>, <code>svd</code>, <code>svd-xt</code>, <code>flux-dev</code>, <code>flux-schnell</code>, <code>flux2.dev</code> / <code>flux2-dev</code>, <code>glm-image</code>, <code>hunyuan-image-2.1</code>, <code>omnigen</code>, <code>qwen-image</code>, <code>sana-1.6b</code>, <code>ovis-image</code>, <code>hidream-i1</code>, <code>cogvideox-2b</code>, <code>cogvideox-5b</code>, <code>kandinsky5-t2v</code>, <code>kandinsky5-i2v</code>, <code>wan2.1-t2v-14b</code>, <code>wan2.1-i2v-14b</code>, <code>wan2.2-t2v-14b</code>, <code>wan2.2-i2v-14b</code>, <code>hunyuan-video</code>, <code>hunyuan-video-1.5-t2v</code>, <code>hunyuan-video-1.5-i2v</code>, <code>helios-t2v</code>, <code>helios-i2v</code>, <code>sana-video</code>, <code>ltx-video</code>, <code>ltx2-i2v</code>, <code>soulx-flashtalk-14b</code>, and <code>soulx-flashhead-1.3b</code></li>
+<li>This means the codebase already has a broad model-zoo surface, but future work should not expand merely to look comprehensive</li>
+<li>The roadmap below treats FlashTalk / FlashHead / LiveAct / CosyVoice / SenseVoice as Core, and SDXL / Flux2 / Qwen-Image / SVD / Wan as adjacent digital-human asset capabilities</li>
+<li>For multi-task families, the current registry uses task-specific suffixes where needed, for example <code>helios-t2v</code> / <code>helios-i2v</code> and <code>hunyuan-video-1.5-t2v</code> / <code>hunyuan-video-1.5-i2v</code></li>
+</ul>
+<h2 id="current-snapshot">Current snapshot<a class="headerlink" href="#current-snapshot" title="Permanent link">&para;</a></h2>
+<p>The authoritative list of implemented models is generated from the live registry: <a href="../supported_models/">Supported Models</a>. This document focuses on priorities and outstanding work.</p>
+<p>The highest priority is not adding more general models. It is completing a deployable digital-human loop:</p>
+<ul>
+<li>stable streaming TTS and reusable speaker profiles for <code>cosyvoice3-triton-trtllm</code></li>
+<li>resident workers, hot-path benchmarks, and realtime serving for <code>soulx-flashtalk-14b</code></li>
+<li>resident paths and deployment docs for <code>soulx-flashhead-1.3b</code> / <code>soulx-liveact-14b</code></li>
+<li>ASR / speech understanding: first entrypoint is <code>sensevoice-small</code>; Whisper / Paraformer remain follow-up candidates</li>
+<li>a minimal recommended set for avatar assets and idle video material</li>
+</ul>
+<h2 id="planning-principles">Planning principles<a class="headerlink" href="#planning-principles" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Prioritize models and services that directly serve digital-human products.</li>
+<li>Core models must have real-hardware smoke, benchmarks, and deployment docs; registration alone is not mainline support.</li>
+<li>Adjacent models continue only when they support avatar assets, backgrounds, idle video, editing, or post-processing.</li>
+<li>Experimental models keep registry entries and basic tests, but no longer require CUDA / Ascend dual-backend validation.</li>
+<li>Avoid turning OmniRT into a thin Diffusers / ComfyUI clone; the value should be runtime, resident serving, observability, and deployment for digital-human systems.</li>
+</ol>
+<h2 id="registry-key-convention">Registry key convention<a class="headerlink" href="#registry-key-convention" title="Permanent link">&para;</a></h2>
+<p>Use lowercase kebab-case IDs with the following pattern:</p>
+<p><code>&lt;family&gt;-&lt;variant&gt;[-&lt;size&gt;|-&lt;mode&gt;|-&lt;task-suffix&gt;]</code></p>
+<p>Examples:</p>
+<ul>
+<li><code>sdxl-base-1.0</code></li>
+<li><code>sdxl-refiner-1.0</code></li>
+<li><code>sd3-medium</code></li>
+<li><code>sd3.5-large</code></li>
+<li><code>flux2.dev</code></li>
+<li><code>flux-dev</code></li>
+<li><code>flux-schnell</code></li>
+<li><code>flux-fill</code></li>
+<li><code>qwen-image</code></li>
+<li><code>qwen-image-edit</code></li>
+<li><code>svd</code></li>
+<li><code>svd-xt</code></li>
+<li><code>wan2.1-t2v-14b</code></li>
+<li><code>wan2.1-i2v-14b</code></li>
+<li><code>hunyuan-video-1.5</code></li>
+<li><code>ltx2-i2v</code></li>
+</ul>
+<p>Naming rules:</p>
+<ol>
+<li>Prefer the public model-family name used by the original project.</li>
+<li>Preserve meaningful upstream version markers such as <code>2.1</code>, <code>3.5</code>, or <code>1.5</code>.</li>
+<li>Use task suffixes only when the same family has multiple task-specific pipelines.</li>
+<li>Avoid backend names in the registry key. Backend remains a runtime choice, not a model identity.</li>
+<li>Avoid vendor prefixes when the family name is already unambiguous.</li>
+</ol>
+<h2 id="support-tiers">Support tiers<a class="headerlink" href="#support-tiers" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>Core</code>: digital-human main path; validation and operations loop required</li>
+<li><code>Adjacent</code>: capabilities that serve digital-human asset production or enhancement</li>
+<li><code>Experimental</code>: existing integrations retained without a mainline promise</li>
+</ul>
+<h2 id="phase-roadmap">Phase roadmap<a class="headerlink" href="#phase-roadmap" title="Permanent link">&para;</a></h2>
+<h3 id="phase-a-close-the-digital-human-main-loop">Phase A: Close the Digital-Human Main Loop<a class="headerlink" href="#phase-a-close-the-digital-human-main-loop" title="Permanent link">&para;</a></h3>
+<p>Goal:</p>
+<ul>
+<li>make TTS -&gt; audio-driven avatar -&gt; video output / realtime service reproducible</li>
+</ul>
+<p>Models:</p>
+<ul>
+<li><code>cosyvoice3-triton-trtllm</code></li>
+<li><code>sensevoice-small</code></li>
+<li><code>soulx-flashtalk-14b</code></li>
+<li><code>soulx-flashhead-1.3b</code></li>
+<li><code>soulx-liveact-14b</code></li>
+</ul>
+<p>Deliverables:</p>
+<ul>
+<li>fixed benchmark scenarios: first chunk, cold start, hot chunks, end-to-end time</li>
+<li>resident worker health checks, restart behavior, log tails, and error classes</li>
+<li>minimal HTTP / CLI / WebSocket startup docs</li>
+</ul>
+<h3 id="phase-b-digital-human-asset-production">Phase B: Digital-Human Asset Production<a class="headerlink" href="#phase-b-digital-human-asset-production" title="Permanent link">&para;</a></h3>
+<p>Goal:</p>
+<ul>
+<li>keep a small high-value asset path for portraits, backgrounds, style images, and idle video material</li>
+</ul>
+<p>Models:</p>
+<ul>
+<li><code>sdxl-refiner-1.0</code></li>
+<li><code>flux2.dev</code></li>
+<li><code>qwen-image</code></li>
+<li><code>qwen-image-edit</code></li>
+<li><code>svd-xt</code></li>
+<li><code>wan2.2-t2v-14b</code></li>
+<li><code>wan2.2-i2v-14b</code></li>
+</ul>
+<h3 id="phase-c-speech-understanding-and-post-processing">Phase C: Speech Understanding and Post-Processing<a class="headerlink" href="#phase-c-speech-understanding-and-post-processing" title="Permanent link">&para;</a></h3>
+<p>Goal:</p>
+<ul>
+<li>add upstream and downstream capabilities needed for real digital-human conversations and video delivery</li>
+</ul>
+<p>Candidates:</p>
+<ul>
+<li>Whisper / Paraformer / SenseVoice</li>
+<li>GFPGAN / CodeFormer / Real-ESRGAN</li>
+<li>RIFE / matting / background replacement</li>
+</ul>
+<h3 id="phase-d-general-model-contraction-and-compatibility">Phase D: General-Model Contraction and Compatibility<a class="headerlink" href="#phase-d-general-model-contraction-and-compatibility" title="Permanent link">&para;</a></h3>
+<p>Goal:</p>
+<ul>
+<li>move integrated but non-digital-human models out of the main investment line</li>
+</ul>
+<p>Policy:</p>
+<ul>
+<li>README / docs no longer market general model count</li>
+<li>CI does not expand general-model smoke by default</li>
+<li>registry and generated docs retain the full list</li>
+<li>experimental models move up to adjacent only when a concrete digital-human scenario appears</li>
+</ul>
+<h2 id="historical-compatibility-list">Historical compatibility list<a class="headerlink" href="#historical-compatibility-list" title="Permanent link">&para;</a></h2>
+<p>The detailed target list below is retained as compatibility context for already-integrated families. New validation priority should follow the Core / Adjacent / Experimental tiers above.</p>
+<h2 id="detailed-target-list">Detailed target list<a class="headerlink" href="#detailed-target-list" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Registry key</th>
+<th>Task</th>
+<th>CUDA</th>
+<th>Ascend</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0</td>
+<td><code>sdxl-base-1.0</code></td>
+<td>text2image</td>
+<td>required</td>
+<td>required</td>
+<td>current baseline</td>
+</tr>
+<tr>
+<td>P0</td>
+<td><code>svd</code></td>
+<td>image2video</td>
+<td>required</td>
+<td>required</td>
+<td>add the 14-frame variant</td>
+</tr>
+<tr>
+<td>P0</td>
+<td><code>svd-xt</code></td>
+<td>image2video</td>
+<td>required</td>
+<td>required</td>
+<td>current video baseline</td>
+</tr>
+<tr>
+<td>P0</td>
+<td><code>flux2.dev</code></td>
+<td>text2image</td>
+<td>required</td>
+<td>recommended</td>
+<td>already implemented; newer Flux generation path</td>
+</tr>
+<tr>
+<td>P0</td>
+<td><code>wan2.2-t2v-14b</code></td>
+<td>text2video</td>
+<td>required</td>
+<td>watch</td>
+<td>already implemented; strong current open video target</td>
+</tr>
+<tr>
+<td>P0</td>
+<td><code>wan2.2-i2v-14b</code></td>
+<td>image2video</td>
+<td>required</td>
+<td>watch</td>
+<td>already implemented; first-frame-guided video path</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>sd15</code></td>
+<td>text2image, image2image, inpaint</td>
+<td>required</td>
+<td>recommended</td>
+<td>widest legacy ecosystem reach</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>sd21</code></td>
+<td>text2image, depth2image</td>
+<td>recommended</td>
+<td>optional</td>
+<td>useful for older SD2 workflows</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>sdxl-refiner-1.0</code></td>
+<td>image refinement</td>
+<td>required</td>
+<td>recommended</td>
+<td>completes two-stage SDXL</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>sdxl-turbo</code></td>
+<td>text2image</td>
+<td>required</td>
+<td>optional</td>
+<td>low-latency generation</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>sd3-medium</code></td>
+<td>text2image</td>
+<td>required</td>
+<td>watch</td>
+<td>practical SD3 entry point</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>sd3.5-large</code></td>
+<td>text2image</td>
+<td>required</td>
+<td>watch</td>
+<td>strong modern SD family target</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>sd3.5-large-turbo</code></td>
+<td>text2image</td>
+<td>required</td>
+<td>watch</td>
+<td>speed-oriented SD3.5 path</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>flux-dev</code></td>
+<td>text2image</td>
+<td>required</td>
+<td>recommended</td>
+<td>major ecosystem priority</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>flux-schnell</code></td>
+<td>text2image</td>
+<td>required</td>
+<td>recommended</td>
+<td>low-step Flux variant</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>flux-fill</code></td>
+<td>inpaint, outpaint</td>
+<td>required</td>
+<td>optional</td>
+<td>high-value editing path</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>glm-image</code></td>
+<td>text2image, image2image</td>
+<td>required</td>
+<td>watch</td>
+<td>strong text rendering and instruction-following image generation</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>hunyuan-image-2.1</code></td>
+<td>text2image</td>
+<td>required</td>
+<td>recommended</td>
+<td>strong Chinese-language image generation target</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>omnigen</code></td>
+<td>multimodal-to-image</td>
+<td>required</td>
+<td>watch</td>
+<td>unified instruction, editing, and conditional image generation path</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>qwen-image</code></td>
+<td>text2image</td>
+<td>required</td>
+<td>recommended</td>
+<td>especially valuable for multilingual text rendering</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>qwen-image-edit</code></td>
+<td>image editing</td>
+<td>required</td>
+<td>recommended</td>
+<td>editing path for Qwen image family</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>sana-1.6b</code></td>
+<td>text2image</td>
+<td>recommended</td>
+<td>optional</td>
+<td>efficient high-res image generation</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>ovis-image</code></td>
+<td>text2image</td>
+<td>recommended</td>
+<td>watch</td>
+<td>compact model with strong text rendering focus</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>hidream-i1</code></td>
+<td>text2image</td>
+<td>watch</td>
+<td>watch</td>
+<td>newer modern image family worth tracking</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>cogvideox-2b</code></td>
+<td>text2video</td>
+<td>required</td>
+<td>watch</td>
+<td>lower barrier video entry point</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>cogvideox-5b</code></td>
+<td>text2video</td>
+<td>required</td>
+<td>watch</td>
+<td>stronger open video baseline</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>kandinsky5-t2v</code></td>
+<td>text2video</td>
+<td>required</td>
+<td>watch</td>
+<td>high-quality open video family with lite and pro variants</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>kandinsky5-i2v</code></td>
+<td>image2video</td>
+<td>required</td>
+<td>watch</td>
+<td>paired image-to-video path in the same family</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>wan2.1-t2v-14b</code></td>
+<td>text2video</td>
+<td>required</td>
+<td>watch</td>
+<td>one of the most important current video targets</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>wan2.1-i2v-14b</code></td>
+<td>image2video</td>
+<td>required</td>
+<td>watch</td>
+<td>especially aligned with OmniRT's video focus</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>hunyuan-video</code></td>
+<td>text2video</td>
+<td>required</td>
+<td>watch</td>
+<td>strong open video family</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>hunyuan-video-1.5</code></td>
+<td>text2video, image2video</td>
+<td>required</td>
+<td>watch</td>
+<td>newer family version worth tracking</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>helios</code></td>
+<td>text2video, image2video, video2video</td>
+<td>required</td>
+<td>watch</td>
+<td>long-video and real-time generation candidate</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>sana-video</code></td>
+<td>text2video</td>
+<td>recommended</td>
+<td>watch</td>
+<td>efficient small-model video option</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>ltx-video</code></td>
+<td>text2video</td>
+<td>required</td>
+<td>watch</td>
+<td>attractive long-video and efficient inference path</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><code>ltx2-i2v</code></td>
+<td>image2video</td>
+<td>required</td>
+<td>watch</td>
+<td>strong fit for OmniRT's video roadmap</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><code>flux-depth</code></td>
+<td>controlled text2image</td>
+<td>required</td>
+<td>optional</td>
+<td>structure conditioning</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><code>flux-canny</code></td>
+<td>controlled text2image</td>
+<td>required</td>
+<td>optional</td>
+<td>edge-conditioned generation</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><code>flux-kontext</code></td>
+<td>image editing</td>
+<td>required</td>
+<td>watch</td>
+<td>next-generation Flux editing path</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><code>chronoedit</code></td>
+<td>physically consistent image editing</td>
+<td>recommended</td>
+<td>watch</td>
+<td>video-backed image editing with temporal reasoning</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><code>qwen-image-edit-plus</code></td>
+<td>image editing</td>
+<td>required</td>
+<td>watch</td>
+<td>more advanced Qwen editing</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><code>qwen-image-layered</code></td>
+<td>layered image editing</td>
+<td>recommended</td>
+<td>watch</td>
+<td>useful for compositing workflows</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><code>kolors</code></td>
+<td>text2image</td>
+<td>recommended</td>
+<td>optional</td>
+<td>optional multilingual image model add-on</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><code>pixart-sigma</code></td>
+<td>text2image</td>
+<td>recommended</td>
+<td>optional</td>
+<td>additional DiT image family</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><code>animate-diff-sdxl</code></td>
+<td>text2video</td>
+<td>recommended</td>
+<td>watch</td>
+<td>SDXL-adjacent motion support</td>
+</tr>
+<tr>
+<td>P3</td>
+<td><code>bria-3.2</code></td>
+<td>text2image</td>
+<td>watch</td>
+<td>watch</td>
+<td>monitor enterprise/commercial demand</td>
+</tr>
+<tr>
+<td>P3</td>
+<td><code>lumina-t2x</code></td>
+<td>text2image</td>
+<td>watch</td>
+<td>watch</td>
+<td>keep under observation</td>
+</tr>
+<tr>
+<td>P3</td>
+<td><code>mochi</code></td>
+<td>text2video</td>
+<td>watch</td>
+<td>watch</td>
+<td>monitor maturity and demand</td>
+</tr>
+<tr>
+<td>P3</td>
+<td><code>skyreels-v2</code></td>
+<td>video</td>
+<td>watch</td>
+<td>watch</td>
+<td>monitor maturity and demand</td>
+</tr>
+</tbody>
+</table>
+<h2 id="capability-roadmap-by-model-family">Capability roadmap by model family<a class="headerlink" href="#capability-roadmap-by-model-family" title="Permanent link">&para;</a></h2>
+<p>Supporting a base model family usually is not enough. The following capability layers should be tracked explicitly.</p>
+<h3 id="stable-diffusion-family">Stable Diffusion family<a class="headerlink" href="#stable-diffusion-family" title="Permanent link">&para;</a></h3>
+<p>Base targets:</p>
+<ul>
+<li><code>sd15</code></li>
+<li><code>sd21</code></li>
+<li><code>sdxl-base-1.0</code></li>
+<li><code>sdxl-refiner-1.0</code></li>
+<li><code>sdxl-turbo</code></li>
+<li><code>sd3-medium</code></li>
+<li><code>sd3.5-large</code></li>
+<li><code>sd3.5-large-turbo</code></li>
+</ul>
+<p>Recommended capability layers:</p>
+<ul>
+<li>LoRA loading</li>
+<li>image2image</li>
+<li>inpainting</li>
+<li>ControlNet</li>
+<li>IP-Adapter</li>
+</ul>
+<h3 id="flux-family">Flux family<a class="headerlink" href="#flux-family" title="Permanent link">&para;</a></h3>
+<p>Base targets:</p>
+<ul>
+<li><code>flux2.dev</code></li>
+<li><code>flux-dev</code></li>
+<li><code>flux-schnell</code></li>
+<li><code>flux-fill</code></li>
+<li><code>flux-depth</code></li>
+<li><code>flux-canny</code></li>
+<li><code>flux-kontext</code></li>
+</ul>
+<p>Recommended capability layers:</p>
+<ul>
+<li>LoRA loading</li>
+<li>fill / outpaint</li>
+<li>control conditions</li>
+<li>image-guided editing</li>
+</ul>
+<h3 id="qwen-image-family">Qwen image family<a class="headerlink" href="#qwen-image-family" title="Permanent link">&para;</a></h3>
+<p>Base targets:</p>
+<ul>
+<li><code>qwen-image</code></li>
+<li><code>qwen-image-edit</code></li>
+<li><code>qwen-image-edit-plus</code></li>
+<li><code>qwen-image-layered</code></li>
+</ul>
+<p>Recommended capability layers:</p>
+<ul>
+<li>multilingual prompt handling</li>
+<li>image editing</li>
+<li>layered or compositing-aware export</li>
+</ul>
+<h3 id="generalist-image-families">Generalist image families<a class="headerlink" href="#generalist-image-families" title="Permanent link">&para;</a></h3>
+<p>Base targets:</p>
+<ul>
+<li><code>glm-image</code></li>
+<li><code>omnigen</code></li>
+<li><code>hunyuan-image-2.1</code></li>
+<li><code>ovis-image</code></li>
+<li><code>hidream-i1</code></li>
+</ul>
+<p>Recommended capability layers:</p>
+<ul>
+<li>instruction-following image generation</li>
+<li>image editing</li>
+<li>multi-image conditioning</li>
+<li>text rendering quality</li>
+<li>Chinese-language prompt coverage</li>
+</ul>
+<h3 id="video-families">Video families<a class="headerlink" href="#video-families" title="Permanent link">&para;</a></h3>
+<p>Base targets:</p>
+<ul>
+<li><code>svd</code></li>
+<li><code>svd-xt</code></li>
+<li><code>wan2.2-t2v-14b</code></li>
+<li><code>wan2.2-i2v-14b</code></li>
+<li><code>cogvideox-2b</code></li>
+<li><code>cogvideox-5b</code></li>
+<li><code>kandinsky5-t2v</code></li>
+<li><code>kandinsky5-i2v</code></li>
+<li><code>wan2.1-t2v-14b</code></li>
+<li><code>wan2.1-i2v-14b</code></li>
+<li><code>hunyuan-video</code></li>
+<li><code>hunyuan-video-1.5</code></li>
+<li><code>helios</code></li>
+<li><code>sana-video</code></li>
+<li><code>ltx-video</code></li>
+<li><code>ltx2-i2v</code></li>
+</ul>
+<p>Recommended capability layers:</p>
+<ul>
+<li>text-to-video</li>
+<li>image-to-video</li>
+<li>frame-count validation</li>
+<li>fps export controls</li>
+<li>first-frame / last-frame conditioning where the upstream model supports it</li>
+</ul>
+<h2 id="recommended-implementation-order">Recommended implementation order<a class="headerlink" href="#recommended-implementation-order" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Finish hardware validation for <code>sdxl-base-1.0</code>, <code>svd</code>, <code>svd-xt</code>, <code>flux2.dev</code>, <code>wan2.2-t2v-14b</code>, and <code>wan2.2-i2v-14b</code>.</li>
+<li>Add <code>sd15</code>, <code>sdxl-refiner-1.0</code>, <code>sdxl-turbo</code>, <code>flux-dev</code>, and <code>flux-schnell</code>.</li>
+<li>Add <code>glm-image</code>, <code>hunyuan-image-2.1</code>, <code>qwen-image</code>, <code>qwen-image-edit</code>, and <code>omnigen</code>.</li>
+<li>Add <code>cogvideox-2b</code>, <code>hunyuan-video</code>, <code>kandinsky5-t2v</code>, <code>kandinsky5-i2v</code>, and <code>helios</code>.</li>
+<li>Add <code>wan2.1-i2v-14b</code> and <code>wan2.1-t2v-14b</code> where backward compatibility or ecosystem parity still matters, then add <code>ltx-video</code> and <code>ltx2-i2v</code>.</li>
+<li>Add control and editing variants such as <code>flux-fill</code>, <code>flux-depth</code>, <code>flux-canny</code>, <code>flux-kontext</code>, <code>chronoedit</code>, and the higher-value Qwen image editing variants.</li>
+</ol>
+<h2 id="models-to-deprioritize">Models to deprioritize<a class="headerlink" href="#models-to-deprioritize" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>i2vgen-xl</code></li>
+</ul>
+<p>Reason:</p>
+<ul>
+<li>Diffusers documents <code>I2VGen-XL</code> as deprecated, so it is not a good primary investment target for a new runtime.</li>
+</ul>
+<h2 id="source-references">Source references<a class="headerlink" href="#source-references" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Diffusers pipelines overview: <a href="https://huggingface.co/docs/diffusers/main/en/api/pipelines/overview">https://huggingface.co/docs/diffusers/main/en/api/pipelines/overview</a></li>
+<li>Diffusers video generation guide: <a href="https://huggingface.co/docs/diffusers/en/using-diffusers/text-img2vid">https://huggingface.co/docs/diffusers/en/using-diffusers/text-img2vid</a></li>
+<li>Stable Video Diffusion guide: <a href="https://huggingface.co/docs/diffusers/using-diffusers/svd">https://huggingface.co/docs/diffusers/using-diffusers/svd</a></li>
+<li>Stable Diffusion 3 pipeline docs: <a href="https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/stable_diffusion_3">https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/stable_diffusion_3</a></li>
+<li>Flux pipeline docs: <a href="https://huggingface.co/docs/diffusers/api/pipelines/flux">https://huggingface.co/docs/diffusers/api/pipelines/flux</a></li>
+<li>Flux2 pipeline docs: <a href="https://huggingface.co/docs/diffusers/en/api/pipelines/flux2">https://huggingface.co/docs/diffusers/en/api/pipelines/flux2</a></li>
+<li>GLM-Image pipeline docs: <a href="https://huggingface.co/docs/diffusers/api/pipelines/glm_image">https://huggingface.co/docs/diffusers/api/pipelines/glm_image</a></li>
+<li>OmniGen pipeline docs: <a href="https://huggingface.co/docs/diffusers/api/pipelines/omnigen">https://huggingface.co/docs/diffusers/api/pipelines/omnigen</a></li>
+<li>HiDream-I1 pipeline docs: <a href="https://huggingface.co/docs/diffusers/main/api/pipelines/hidream">https://huggingface.co/docs/diffusers/main/api/pipelines/hidream</a></li>
+<li>HunyuanImage 2.1 pipeline docs: <a href="https://huggingface.co/docs/diffusers/en/api/pipelines/hunyuanimage21">https://huggingface.co/docs/diffusers/en/api/pipelines/hunyuanimage21</a></li>
+<li>Ovis-Image pipeline docs: <a href="https://huggingface.co/docs/diffusers/en/api/pipelines/ovis_image">https://huggingface.co/docs/diffusers/en/api/pipelines/ovis_image</a></li>
+<li>QwenImage pipeline docs: <a href="https://huggingface.co/docs/diffusers/api/pipelines/qwenimage">https://huggingface.co/docs/diffusers/api/pipelines/qwenimage</a></li>
+<li>Sana pipeline docs: <a href="https://huggingface.co/docs/diffusers/api/pipelines/sana">https://huggingface.co/docs/diffusers/api/pipelines/sana</a></li>
+<li>Sana-Video pipeline docs: <a href="https://huggingface.co/docs/diffusers/api/pipelines/sana_video">https://huggingface.co/docs/diffusers/api/pipelines/sana_video</a></li>
+<li>HunyuanVideo pipeline docs: <a href="https://huggingface.co/docs/diffusers/api/pipelines/hunyuan_video">https://huggingface.co/docs/diffusers/api/pipelines/hunyuan_video</a></li>
+<li>HunyuanVideo-1.5 pipeline docs: <a href="https://huggingface.co/docs/diffusers/en/api/pipelines/hunyuan_video15">https://huggingface.co/docs/diffusers/en/api/pipelines/hunyuan_video15</a></li>
+<li>Helios pipeline docs: <a href="https://huggingface.co/docs/diffusers/api/pipelines/helios">https://huggingface.co/docs/diffusers/api/pipelines/helios</a></li>
+<li>Kandinsky 5.0 Video pipeline docs: <a href="https://huggingface.co/docs/diffusers/api/pipelines/kandinsky5_video">https://huggingface.co/docs/diffusers/api/pipelines/kandinsky5_video</a></li>
+<li>ChronoEdit pipeline docs: <a href="https://huggingface.co/docs/diffusers/api/pipelines/chronoedit">https://huggingface.co/docs/diffusers/api/pipelines/chronoedit</a></li>
+<li>LTX-2 pipeline docs: <a href="https://huggingface.co/docs/diffusers/main/en/api/pipelines/ltx2">https://huggingface.co/docs/diffusers/main/en/api/pipelines/ltx2</a></li>
+<li>I2VGen-XL docs: <a href="https://huggingface.co/docs/diffusers/en/api/pipelines/i2vgenxl">https://huggingface.co/docs/diffusers/en/api/pipelines/i2vgenxl</a></li>
+<li>ComfyUI model concepts: <a href="https://docs.comfy.org/development/core-concepts/models">https://docs.comfy.org/development/core-concepts/models</a></li>
+<li>ComfyUI workflow templates: <a href="https://docs.comfy.org/interface/features/template">https://docs.comfy.org/interface/features/template</a></li>
+<li>InvokeAI requirements: <a href="https://invoke-ai.github.io/InvokeAI/installation/requirements/">https://invoke-ai.github.io/InvokeAI/installation/requirements/</a></li>
+<li>InvokeAI model installation docs: <a href="https://invoke-ai.github.io/InvokeAI/installation/models/">https://invoke-ai.github.io/InvokeAI/installation/models/</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.path", "navigation.top", "navigation.tracking", "content.code.copy", "content.code.annotate", "content.tabs.link", "content.action.edit", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../../javascript/logo-theme.js"></script>
+      
+    
+  </body>
+</html>

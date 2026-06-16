@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 96" fill="none">
+  <defs>
+    <linearGradient id="gl" x1="0" y1="0" x2="96" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="80" height="80" rx="20" fill="url(#gl)"/>
+  <path d="M28 60 L28 36 L40 36 L48 52 L56 36 L68 36 L68 60 L60 60 L60 46 L52 62 L44 62 L36 46 L36 60 Z"
+        fill="#fff"/>
+  <text x="112" y="64" font-family="'Inter','Helvetica Neue',Arial,sans-serif"
+        font-size="48" font-weight="700" fill="#1f2937" letter-spacing="-0.02em">OmniRT</text>
+  <text x="112" y="84" font-family="'Inter','Helvetica Neue',Arial,sans-serif"
+        font-size="14" font-weight="500" fill="#4f46e5" letter-spacing="0.04em">IMAGE · VIDEO · AUDIO RUNTIME</text>
+</svg>
